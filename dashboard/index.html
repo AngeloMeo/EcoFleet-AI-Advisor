@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoFleet AI Advisor - Live Dashboard</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Librerie Esterne -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+</head>
+<body>
+    <div id="app" class="container">
+        <header>
+            <h1>🏎️ EcoFleet AI Advisor</h1>
+            <div class="status-indicator" :class="{ connected: isConnected }">
+                {{ statusMessage }}
+            </div>
+        </header>
+
+        <main>
+            <!-- KPI Cards -->
+            <div class="kpi-grid">
+                <div class="card speed">
+                    <h3>Velocità (km/h)</h3>
+                    <div class="value">{{ latest.speed || 0 }}</div>
+                </div>
+                <div class="card rpm">
+                    <h3>Giri Motore (RPM)</h3>
+                    <div class="value">{{ latest.rpm || 0 }}</div>
+                </div>
+                <div class="card ai">
+                    <h3>🤖 AI Advisor</h3>
+                    <div class="advice">{{ latest.ai_advice || "In attesa di dati..." }}</div>
+                </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="card chart-container">
+                <canvas id="telemetryChart"></canvas>
+            </div>
+
+            <!-- Logs -->
+            <div class="card logs">
+                <h3>Log Eventi</h3>
+                <ul>
+                    <li v-for="log in logs" :key="log.id">
+                        [{{ formatTime(log.timestamp) }}] {{ log.vehicle_id }}: {{ log.ai_advice }}
+                    </li>
+                </ul>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
