@@ -21,7 +21,7 @@ jobs:
       - name: 'Deploy to Azure Web App'
         uses: Azure/webapps-deploy@v2
         with:
-          app-name: 'webapp-ecofleet-angelo' # Update this placeholder or use env var
+          app-name: 'ecofleet' # Update this placeholder or use env var
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: './dashboard'
 
