@@ -3,6 +3,9 @@ name: Deploy Frontend (Static Web App)
 on:
   push:
     branches: [main]
+    paths:
+      - 'dashboard/**'          # <--- Esegue questo file SOLO se cambia qualcosa dentro 'client'
+      - '.github/workflows/frontend.yml'
   workflow_dispatch:
 
 jobs:

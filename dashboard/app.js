@@ -27,7 +27,7 @@ const app = new Vue({
                 
                 if (window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost') {
                     // ☁️ SIAMO SU AZURE!
-                    API_BASE_URL = 'https://func-ecofleet.azurewebsites.net/api';
+                    API_BASE_URL = 'https://func-ecofleet-euhtfkfyhpbsapfp.italynorth-01.azurewebsites.net/';
                 }
 
                 console.log("Using API endpoint:", API_BASE_URL);

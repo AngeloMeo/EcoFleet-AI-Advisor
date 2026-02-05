@@ -3,6 +3,9 @@ name: Deploy Backend (Functions)
 on:
   push:
     branches: [main]
+    paths:
+      - 'api/**'             # <--- Esegue questo file SOLO se cambia qualcosa dentro 'api'
+      - '.github/workflows/backend.yml' # (Opzionale) Esegue anche se modifichi il workflow stesso
   workflow_dispatch:
 
 env:
