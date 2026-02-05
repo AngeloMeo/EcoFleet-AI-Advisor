@@ -22,8 +22,15 @@ const app = new Vue({
                 this.statusMessage = 'Connessione in corso...';
                 
                 // 1. Chiamata a /api/negotiate per ottenere URL e Token
-                // Nota: Assicurati che API_BASE_URL punti alla tua Function App locale
-                const API_BASE_URL = 'http://localhost:7071/api'; 
+                // Logica intelligente: Se siamo in locale usa localhost, altrimenti usa Azure
+                let API_BASE_URL = 'http://localhost:7071/api'; 
+                
+                if (window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost') {
+                    // ☁️ SIAMO SU AZURE!
+                    API_BASE_URL = 'https://func-ecofleet.azurewebsites.net/api';
+                }
+
+                console.log("Using API endpoint:", API_BASE_URL);
                 
                 const connection = new signalR.HubConnectionBuilder()
                     .withUrl(API_BASE_URL) 
