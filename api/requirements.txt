@@ -1,4 +1,3 @@
 azure-functions
 azure-cosmos
-azure-storage-queue
-openai
+azure-iot-hub

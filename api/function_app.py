@@ -1,10 +1,28 @@
 import logging
-import azure.functions as func
-import logging
+import os
 import json
+import hashlib
 import datetime
 
+import azure.functions as func
+from azure.iot.hub import IoTHubRegistryManager
+
 app = func.FunctionApp()
+
+# --- SINGLETON: IoT Hub Client (riusato tra le invocazioni) ---
+_iot_registry_manager = None
+
+def get_iot_registry_manager():
+    """Lazy singleton: crea il client una sola volta per processo."""
+    global _iot_registry_manager
+    if _iot_registry_manager is None:
+        conn_str = os.environ.get("IotHubConnectionString")
+        if conn_str:
+            _iot_registry_manager = IoTHubRegistryManager(conn_str)
+            logging.info("✅ IoT Hub Registry Manager initialized (singleton)")
+        else:
+            logging.warning("⚠️ IotHubConnectionString not configured. C2D feedback disabled.")
+    return _iot_registry_manager
 
 @app.route(route="negotiate", auth_level=func.AuthLevel.ANONYMOUS)
 @app.generic_input_binding(arg_name="connectionInfo", type="signalRConnectionInfo", hubName="telemetryHub", connectionStringSetting="SignalRConnectionString")
@@ -24,29 +42,46 @@ def ProcessTelemetry(msg: func.QueueMessage, outputDocument: func.Out[func.Docum
         logging.error(f"Error parsing message: {e}")
         return
 
-    # --- MOCK AI LOGIC (Finché Azure OpenAI non è disponibile) ---
+    # --- REAL AI LOGIC & FEEDBACK LOOP ---
     speed = telemetry.get("speed", 0)
     rpm = telemetry.get("rpm", 0)
+    vehicle_id = telemetry.get("vehicle_id")
     
     advice = "Guida ottimale. Continua così!"
+    alert_level = "INFO" # INFO, WARN, CRITICAL
+
     if rpm > 3000:
         advice = "Giri troppo alti! Cambia marcia per risparmiare carburante."
+        alert_level = "WARN"
     elif speed > 130:
         advice = "Stai superando i limiti. Rallenta per sicurezza e consumi."
+        alert_level = "CRITICAL"
     elif speed < 10 and rpm > 1000:
         advice = "Sei fermo o quasi. Spegni il motore se la sosta è lunga."
+        alert_level = "WARN"
         
-    logging.info(f"AI Mock Advice: {advice}")
-    # -------------------------------------------------------------
-    import hashlib
+    logging.info(f"AI Advice: {advice} [{alert_level}]")
+
+    # Invio Feedback al Device (C2D) via IoT Hub
+    # Solo se c'è un advice rilevante (WARN/CRITICAL) per non intasare la rete
+    if alert_level in ["WARN", "CRITICAL"] and vehicle_id:
+        registry_manager = get_iot_registry_manager()
+        if registry_manager:
+            try:
+                registry_manager.send_c2d_message(vehicle_id, advice)
+                logging.info(f"📤 C2D Message sent to {vehicle_id}: {advice}")
+            except Exception as e:
+                logging.error(f"❌ Failed to send C2D message to {vehicle_id}: {e}")
+
     # Preparazione documento Cosmos DB
     doc = {
         "id": hashlib.sha256(msg.get_body()).hexdigest(),
-        "vehicle_id": telemetry.get("vehicle_id", "unknown"),
+        "vehicle_id": vehicle_id,
         "timestamp": datetime.datetime.utcnow().isoformat(),
         "speed": speed,
         "rpm": rpm,
         "ai_advice": advice,
+        "alert_level": alert_level,
         "processed_at": datetime.datetime.utcnow().isoformat()
     }
 

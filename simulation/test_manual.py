@@ -52,8 +52,8 @@ def send_test_message():
 
         # Dati di prova
         telemetry = {
-            "vehicle_id": "TEST-AUTO-99",
-            "speed": 145,  # Velocità alta per triggerare l'AI
+            "vehicle_id": "TEST-AUTO-69",
+            "speed": 165,  # Velocità alta per triggerare l'AI
             "rpm": 3500,
             "fuel_level": 45
         }
