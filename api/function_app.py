@@ -63,15 +63,15 @@ def ProcessTelemetry(msg: func.QueueMessage, outputDocument: func.Out[func.Docum
     logging.info(f"AI Advice: {advice} [{alert_level}]")
 
     # Invio Feedback al Device (C2D) via IoT Hub
-    # Solo se c'è un advice rilevante (WARN/CRITICAL) per non intasare la rete
-    if alert_level in ["WARN", "CRITICAL"] and vehicle_id:
+    # Invia SEMPRE il feedback al veicolo
+    if vehicle_id:
         registry_manager = get_iot_registry_manager()
         if registry_manager:
             try:
                 registry_manager.send_c2d_message(vehicle_id, advice)
-                logging.info(f"📤 C2D Message sent to {vehicle_id}: {advice}")
+                logging.info(f"📤 C2D [{alert_level}] -> {vehicle_id}: {advice}")
             except Exception as e:
-                logging.error(f"❌ Failed to send C2D message to {vehicle_id}: {e}")
+                logging.error(f"❌ Failed to send C2D to {vehicle_id}: {e}")
 
     # Preparazione documento Cosmos DB
     doc = {

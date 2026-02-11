@@ -3,7 +3,6 @@ import json
 import random
 import time
 import os
-import sys
 import logging
 
 # Azure SDKs
@@ -14,10 +13,14 @@ from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 # --- CONFIGURAZIONE LOGGER ---
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s | %(levelname)s | %(message)s',
+    format='%(asctime)s | %(levelname)-8s | %(message)s',
     datefmt='%H:%M:%S'
 )
 logger = logging.getLogger("EcoFleetSimulator")
+
+# Silenzia lo spam HTTP degli SDK Azure
+for noisy in ["azure.core", "azure.iot", "azure.storage", "urllib3", "uamqp", "msrest"]:
+    logging.getLogger(noisy).setLevel(logging.WARNING)
 
 # --- CONFIGURAZIONE ENV ---
 IOTHUB_SERVICE_CONN_STR = os.getenv("IOTHUB_SERVICE_CONNECTION_STRING")
@@ -26,6 +29,7 @@ QUEUE_NAME = "telemetry-queue"
 
 VEHICLE_PREFIX = "Bus-"
 VEHICLE_COUNT = 5
+TELEMETRY_INTERVAL_SEC = 3  # Secondi tra un invio e l'altro per ogni veicolo
 
 class VehicleSimulator:
     def __init__(self, vehicle_id, device_conn_str, queue_client):
@@ -53,25 +57,50 @@ class VehicleSimulator:
     async def connect(self):
         try:
             self.device_client = IoTHubDeviceClient.create_from_connection_string(self.device_conn_str)
+            
+            # Callback moderna per feedback C2D (sostituisce receive_message deprecato)
+            def on_message(message):
+                feedback = message.data.decode('utf-8')
+                logger.warning(f"🔔 [{self.vehicle_id}] 📩 FEEDBACK: {feedback}")
+                if "slow" in feedback.lower() or "rallenta" in feedback.lower():
+                    logger.info(f"[{self.vehicle_id}] 🛑 Braking due to feedback!")
+                    self.speed *= 0.8
+            
+            self.device_client.on_message_received = on_message
             await self.device_client.connect()
             logger.info(f"[{self.vehicle_id}] ✅ Connected to IoT Hub")
-            asyncio.create_task(self.listen_for_feedback())
         except Exception as e:
             logger.error(f"[{self.vehicle_id}] ❌ Connection Failed: {e}")
 
     async def update_physics(self):
-        # ... (Logica fisica invaiata) ...
-        if self.speed < self.gears[self.gear]['max'] - 5:
-            self.speed += random.uniform(0.5, 2.0)
+        # Decisione di guida: accelera, frena, o guida aggressivamente
+        action = random.random()
+        
+        if action < 0.10:
+            # 10% chance: frenata brusca (traffico, semaforo)
+            brake_force = random.uniform(5, 15)
+            self.speed -= brake_force
+        elif action < 0.20:
+            # 10% chance: accelerata aggressiva
+            self.speed += random.uniform(8, 20)
+        elif self.speed < self.gears[self.gear]['max'] - 5:
+            # Accelerazione normale
+            self.speed += random.uniform(1.0, 5.0)
         elif self.speed > self.gears[self.gear]['max']:
-            self.speed -= 1.0
+            self.speed -= random.uniform(1.0, 3.0)
         
-        self.speed -= 0.1
+        # Attrito/resistenza
+        self.speed -= 0.2
         if self.speed < 0: self.speed = 0
+        if self.speed > 180: self.speed = 180  # Cap fisico
             
+        # RPM con variazione marcata
         base_rpm = self.speed * self.gears[self.gear]['ratio'] * 40
-        self.rpm = base_rpm + 800 + random.uniform(-20, 20)
+        self.rpm = base_rpm + 800 + random.uniform(-100, 100)
+        if self.rpm < 600: self.rpm = 600
+        if self.rpm > 6000: self.rpm = 6000
         
+        # Cambio marcia
         if self.rpm > 3500 and self.gear < 6:
             self.gear += 1
             self.rpm -= 1500
@@ -79,8 +108,9 @@ class VehicleSimulator:
             self.gear -= 1
             self.rpm += 1000
 
-        self.fuel_level -= (self.rpm / 10000.0) * 0.05
-        if self.fuel_level < 0: self.fuel_level = 100
+        # Consumo proporzionale a RPM e velocità
+        self.fuel_level -= (self.rpm / 8000.0) * 0.08
+        if self.fuel_level < 0: self.fuel_level = 100  # Rifornimento magico
 
     def get_telemetry(self):
         return {
@@ -92,36 +122,25 @@ class VehicleSimulator:
             "timestamp": time.time()
         }
 
-    async def listen_for_feedback(self):
-        while self.running:
-            try:
-                # Listener bloccante (attende msg)
-                msg = await self.device_client.receive_message()
-                feedback = msg.data.decode('utf-8')
-                logger.warning(f"🔔 [{self.vehicle_id}] 📩 FEEDBACK RECEIVED: {feedback}")
-                
-                # Reazione simulata: se dicono rallenta, freniamo!
-                if "slow" in feedback.lower() or "rallenta" in feedback.lower():
-                    logger.info(f"[{self.vehicle_id}] ⚠️ Braking due to feedback!")
-                    self.speed *= 0.8 
-
-            except Exception as e:
-                # logger.error(f"[{self.vehicle_id}] Listener Error: {e}")
-                pass
-
     async def run(self):
         while self.running:
             await self.update_physics()
             data = self.get_telemetry()
             
-            # Invio Telemetria
+            logger.info(
+                f"📤 [{self.vehicle_id}] "
+                f"⚙️ G{data['gear']} | "
+                f"🚀 {data['speed']:6.1f} km/h | "
+                f"🔄 {data['rpm']:4d} rpm | "
+                f"⛽ {data['fuel_level']:5.1f}%"
+            )
+            
             try:
                 self.queue_client.send_message(json.dumps(data))
-                # logger.debug(f"[{self.vehicle_id}] Sent Telemetry: {self.speed} km/h") 
-            except Exception:
-                pass # Queue error logic suppressed for cleaner output
+            except Exception as e:
+                logger.error(f"[{self.vehicle_id}] Queue send error: {e}")
                 
-            await asyncio.sleep(2 + random.uniform(0, 1))
+            await asyncio.sleep(TELEMETRY_INTERVAL_SEC + random.uniform(0, 1))
 
     async def stop(self):
         self.running = False
@@ -130,7 +149,10 @@ class VehicleSimulator:
             logger.info(f"[{self.vehicle_id}] Disconnected.")
 
 def provision_fleet(service_conn_string, count):
-    """Crea device SOLO se non esistono già"""
+    """Crea device SOLO se non esistono già. Usa create_device_with_sas per la creazione."""
+    import base64
+    import uuid
+
     registry_manager = IoTHubRegistryManager(service_conn_string)
     devices_config = []
     
@@ -143,8 +165,12 @@ def provision_fleet(service_conn_string, count):
         try:
             device = registry_manager.get_device(device_id)
         except Exception:
-            # Device non esiste, crealo
-            device = registry_manager.create_device(device_id)
+            # Device non esiste, crealo con chiavi SAS auto-generate
+            primary_key = base64.b64encode(uuid.uuid4().bytes + uuid.uuid4().bytes).decode()
+            secondary_key = base64.b64encode(uuid.uuid4().bytes + uuid.uuid4().bytes).decode()
+            device = registry_manager.create_device_with_sas(
+                device_id, primary_key, secondary_key, "enabled"
+            )
             created_new = True
             
         # Get Key
@@ -178,7 +204,7 @@ async def main():
 
     # 2. Provisioning (Persistente)
     try:
-        fleet_config = (IOTHUB_SERVICE_CONN_STR, VEHICLE_COUNT)
+        fleet_config = provision_fleet(IOTHUB_SERVICE_CONN_STR, VEHICLE_COUNT)
     except Exception as e:
         logger.critical(f"Provisioning Failed: {e}")
         return
