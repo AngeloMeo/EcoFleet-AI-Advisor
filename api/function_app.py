@@ -83,17 +83,17 @@ def get_vehicles(req: func.HttpRequest, documents: func.DocumentList) -> func.Ht
 
     return func.HttpResponse(json.dumps(vehicles), mimetype="application/json")
 
-@app.route(route="history", auth_level=func.AuthLevel.ANONYMOUS)
+@app.route(route="history/{vehicleId}", auth_level=func.AuthLevel.ANONYMOUS)
 @app.cosmos_db_input(arg_name="documents",
                     database_name="EcoFleetDB",
                     container_name="Telemetry",
-                    sql_query="Select * FROM c where c.vehicle_id = {Query.vehicleId}",
+                    sql_query="SELECT * FROM c WHERE c.vehicle_id = {vehicleId} ORDER BY c.timestamp DESC OFFSET 0 LIMIT 20",
                     connection="CosmosDBConnectionString")
 def get_vehicle_history(req: func.HttpRequest, documents: func.DocumentList) -> func.HttpResponse:
-    id = req.params.get("vehicleId")
-    logging.info(f"Richiesta storico veicolo {id}")
+    vehicle_id = req.route_params.get("vehicleId")
+    logging.info(f"Richiesta storico veicolo {vehicle_id}")
 
-    if not id:
+    if not vehicle_id:
         return func.HttpResponse("Inserisci un id", status_code=404)
     
     history = [json.loads(doc.to_json()) for doc in documents]

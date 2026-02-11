@@ -44,8 +44,8 @@ const app = new Vue({
             
             try {
                  let API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                    ? `http://localhost:7071/api/history?vehicleId=${vehicleId}`
-                    : `https://func-ecofleet-euhtfkfyhpbsapfp.italynorth-01.azurewebsites.net/api/history?vehicleId=${vehicleId}`;
+                    ? `http://localhost:7071/api/history/${vehicleId}`
+                    : `https://func-ecofleet-euhtfkfyhpbsapfp.italynorth-01.azurewebsites.net/api/history/${vehicleId}`;
 
                 const response = await fetch(API_URL);
                 const history = await response.json();
