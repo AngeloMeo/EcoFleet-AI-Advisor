@@ -73,12 +73,13 @@ def ProcessTelemetry(msg: func.QueueMessage, outputDocument: func.Out[func.Docum
 @app.cosmos_db_input(arg_name="documents",
                     database_name="EcoFleetDB",
                     container_name="Telemetry",
-                    sql_query="Select DISTINCT VALUE c.vehicle_id FROM c",
+                    sql_query="SELECT DISTINCT c.vehicle_id FROM c",
                     connection="CosmosDBConnectionString")
 def get_vehicles(req: func.HttpRequest, documents: func.DocumentList) -> func.HttpResponse:
     logging.info("Richiesta lista veicoli")
     
-    vehicles = [doc for doc in documents]
+    # Ogni doc è {"vehicle_id": "BUS-01"}, estraiamo solo l'ID
+    vehicles = [json.loads(doc.to_json())["vehicle_id"] for doc in documents]
 
     return func.HttpResponse(json.dumps(vehicles), mimetype="application/json")
 
