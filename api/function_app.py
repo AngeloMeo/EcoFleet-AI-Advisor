@@ -41,7 +41,7 @@ def ProcessTelemetry(msg: func.QueueMessage, outputDocument: func.Out[func.Docum
     import hashlib
     # Preparazione documento Cosmos DB
     doc = {
-        "id": hashlib.sha256(msg.get_body().hexdigest()),
+        "id": hashlib.sha256(msg.get_body()).hexdigest(),
         "vehicle_id": telemetry.get("vehicle_id", "unknown"),
         "timestamp": datetime.datetime.utcnow().isoformat(),
         "speed": speed,
