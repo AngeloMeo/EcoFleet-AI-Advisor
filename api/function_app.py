@@ -1,7 +1,7 @@
+import logging
 import azure.functions as func
 import logging
 import json
-import uuid
 import datetime
 
 app = func.FunctionApp()
@@ -38,10 +38,10 @@ def ProcessTelemetry(msg: func.QueueMessage, outputDocument: func.Out[func.Docum
         
     logging.info(f"AI Mock Advice: {advice}")
     # -------------------------------------------------------------
-
+    import hashlib
     # Preparazione documento Cosmos DB
     doc = {
-        "id": str(uuid.uuid4()),
+        "id": hashlib.sha256(msg.get_body().hexdigest()),
         "vehicle_id": telemetry.get("vehicle_id", "unknown"),
         "timestamp": datetime.datetime.utcnow().isoformat(),
         "speed": speed,
@@ -50,6 +50,7 @@ def ProcessTelemetry(msg: func.QueueMessage, outputDocument: func.Out[func.Docum
         "processed_at": datetime.datetime.utcnow().isoformat()
     }
 
+
     # Output su Cosmos DB
     try:
         outputDocument.set(func.Document.from_dict(doc))
@@ -57,7 +58,7 @@ def ProcessTelemetry(msg: func.QueueMessage, outputDocument: func.Out[func.Docum
     except Exception as e:
         logging.error(f"CRITICAL ERROR Saving to Cosmos DB: {e}")
 
-    # Output su SignalR (Real-time Dashboard)
+    # Output su SignalR (Real-time Dashboard) (pub-sub)
     try:
         signalRMessages.set(json.dumps({
             'target': 'newMessage',
@@ -66,3 +67,34 @@ def ProcessTelemetry(msg: func.QueueMessage, outputDocument: func.Out[func.Docum
         logging.info("📡 Telemetry dispatched to SignalR")
     except Exception as e:
         logging.error(f"Error sending to SignalR: {e}")
+
+
+@app.route(route="vehicles", auth_level=func.AuthLevel.ANONYMOUS)
+@app.cosmos_db_input(arg_name="documents",
+                    database_name="EcoFleetDB",
+                    container_name="Telemetry",
+                    sql_query="Select DISTINCT VALUE c.vehicle_id FROM c",
+                    connection="CosmosDBConnectionString")
+def get_vehicles(req: func.HttpRequest, documents: func.DocumentList) -> func.HttpResponse:
+    logging.info("Richiesta lista veicoli")
+    
+    vehicles = [doc for doc in documents]
+
+    return func.HttpResponse(json.dumps(vehicles), mimetype="application/json")
+
+@app.route(route="history", auth_level=func.AuthLevel.ANONYMOUS)
+@app.cosmos_db_input(arg_name="documents",
+                    database_name="EcoFleetDB",
+                    container_name="Telemetry",
+                    sql_query="Select * FROM c where c.vehicle_id = {Query.vehicleId}",
+                    connection="CosmosDBConnectionString")
+def get_vehicle_history(req: func.HttpRequest, documents: func.DocumentList) -> func.HttpResponse:
+    id = req.params.get("vehicleId")
+    logging.info(f"Richiesta storico veicolo {id}")
+
+    if not id:
+        return func.HttpResponse("Inserisci un id", status_code=404)
+    
+    history = [json.loads(doc.to_json()) for doc in documents]
+    
+    return func.HttpResponse(json.dumps(history), mimetype="application/json")

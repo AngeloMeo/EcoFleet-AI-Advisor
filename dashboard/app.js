@@ -8,6 +8,8 @@ const app = new Vue({
             rpm: 0,
             ai_advice: 'In attesa...'
         },
+        vehicles: [],
+        selectedVehicle: '',
         logs: [],
         chart: null,
         chartData: {
@@ -17,6 +19,57 @@ const app = new Vue({
         }
     },
     methods: {
+        async fetchVehicles() {
+            try {
+                let API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                    ? 'http://localhost:7071/api/vehicles'
+                    : 'https://func-ecofleet-euhtfkfyhpbsapfp.italynorth-01.azurewebsites.net/api/vehicles';
+
+                const response = await fetch(API_BASE_URL);
+                const data = await response.json();
+                this.vehicles = data;
+                
+                if (this.vehicles.length > 0) {
+                    this.selectedVehicle = this.vehicles[0];
+                    this.loadHistory(this.selectedVehicle);
+                }
+            } catch (error) {
+                console.error("Errore caricamento veicoli:", error);
+            }
+        },
+
+        async loadHistory(vehicleId) {
+            this.logs = []; 
+            this.chartData.labels = [];
+            
+            try {
+                 let API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                    ? `http://localhost:7071/api/history?vehicleId=${vehicleId}`
+                    : `https://func-ecofleet-euhtfkfyhpbsapfp.italynorth-01.azurewebsites.net/api/history?vehicleId=${vehicleId}`;
+
+                const response = await fetch(API_URL);
+                const history = await response.json();
+                
+                history.reverse().forEach(point => {
+                    this.updateDashboard(point); 
+                });
+                
+            } catch (error) {
+                console.error("Errore caricamento storico:", error);
+            }
+        },
+
+        changeVehicle() {
+            if (this.selectedVehicle) {
+                this.chart.data.labels = [];
+                this.chart.data.datasets[0].data = [];
+                this.chart.data.datasets[1].data = [];
+                this.chart.update();
+                
+                this.loadHistory(this.selectedVehicle);
+            }
+        },
+
         async initSignalR() {
             try {
                 this.statusMessage = 'Connessione in corso...';
@@ -63,6 +116,10 @@ const app = new Vue({
         },
 
         updateDashboard(data) {
+            if (this.selectedVehicle && data.vehicle_id !== this.selectedVehicle) {
+                return;
+            }
+
             // Aggiorna valori KPI
             this.latest = data;
 
@@ -145,6 +202,7 @@ const app = new Vue({
     },
     mounted() {
         this.initChart();
+        this.fetchVehicles();
         this.initSignalR();
     }
 });

@@ -22,7 +22,17 @@
             </div>
         </header>
 
+
         <main>
+            <!-- Selettore Veicolo -->
+            <div class="vehicle-selector" style="margin: 20px; text-align: center;">
+                <label for="vehicleSelect" style="color: white; margin-right: 10px;">Seleziona Veicolo:</label>
+                <select id="vehicleSelect" v-model="selectedVehicle" @change="changeVehicle" style="padding: 5px; border-radius: 5px;">
+                    <option disabled value="">-- Scegli un veicolo --</option>
+                    <option v-for="v in vehicles" :key="v" :value="v">{{ v }}</option>
+                </select>
+            </div>
+
             <!-- KPI Cards -->
             <div class="kpi-grid">
                 <div class="card speed">
