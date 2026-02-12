@@ -38,6 +38,7 @@ class VehicleSimulator:
         self.queue_client = queue_client
         self.device_client = None
         self.running = True
+        self.last_feedback = "In attesa di feedback..."
         
         # Fisica Base
         self.speed = 0.0
@@ -61,6 +62,7 @@ class VehicleSimulator:
             # Callback moderna per feedback C2D (sostituisce receive_message deprecato)
             def on_message(message):
                 feedback = message.data.decode('utf-8')
+                self.last_feedback = feedback
                 logger.warning(f"🔔 [{self.vehicle_id}] 📩 FEEDBACK: {feedback}")
                 if "slow" in feedback.lower() or "rallenta" in feedback.lower():
                     logger.info(f"[{self.vehicle_id}] 🛑 Braking due to feedback!")
@@ -132,7 +134,8 @@ class VehicleSimulator:
                 f"⚙️ G{data['gear']} | "
                 f"🚀 {data['speed']:6.1f} km/h | "
                 f"🔄 {data['rpm']:4d} rpm | "
-                f"⛽ {data['fuel_level']:5.1f}%"
+                f"⛽ {data['fuel_level']:5.1f}% | "
+                f"🤖 {self.last_feedback}"
             )
             
             try:
