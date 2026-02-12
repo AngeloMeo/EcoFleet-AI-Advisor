@@ -81,7 +81,7 @@ const app = new Vue({
                             name: getClaim('name') || data[0].user_id || 'Utente',
                             email: getClaim('preferred_username') || getClaim('emailaddress') || data[0].user_id || ''
                         };
-                        this.authToken = data[0].access_token || '';
+                        this.authToken = data[0].id_token || '';
                     }
                 }
             } catch (e) {
