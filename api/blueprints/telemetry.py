@@ -90,7 +90,7 @@ def ProcessTelemetry(msg: func.QueueMessage, outputDocument: func.Out[func.Docum
 @bp.route(route="telemetry/{vehicleId}", methods=["DELETE"], auth_level=func.AuthLevel.ANONYMOUS)
 def delete_vehicle_telemetry(req: func.HttpRequest) -> func.HttpResponse:
     """Cancella tutti i documenti di un veicolo da Cosmos DB."""
-    from shared.cosmos_client import get_cosmos_container
+    from shared.cosmos_client import get_cosmos_container, get_partition_key_field
 
     vehicle_id = req.route_params.get("vehicleId")
     if not vehicle_id:
@@ -100,16 +100,20 @@ def delete_vehicle_telemetry(req: func.HttpRequest) -> func.HttpResponse:
     if not container:
         return func.HttpResponse("Cosmos non configurato", status_code=500)
 
+    pk_field = get_partition_key_field()
+
     try:
-        query = "SELECT c.id FROM c WHERE c.vehicle_id = @vid"
+        query = f"SELECT c.id, c.{pk_field} FROM c WHERE c.vehicle_id = @vid"
         params = [{"name": "@vid", "value": vehicle_id}]
         items = list(container.query_items(query=query, parameters=params, enable_cross_partition_query=True))
 
+        deleted = 0
         for item in items:
-            container.delete_item(item=item["id"], partition_key=item["id"])
+            container.delete_item(item=item["id"], partition_key=item[pk_field])
+            deleted += 1
 
-        logging.info(f"🗑️ Deleted {len(items)} docs for {vehicle_id}")
-        return func.HttpResponse(json.dumps({"deleted": len(items)}), mimetype="application/json")
+        logging.info(f"🗑️ Deleted {deleted} docs for {vehicle_id} (PK: {pk_field})")
+        return func.HttpResponse(json.dumps({"deleted": deleted}), mimetype="application/json")
     except Exception as e:
         logging.error(f"Delete error: {e}")
         return func.HttpResponse(f"Errore: {e}", status_code=500)
@@ -118,20 +122,28 @@ def delete_vehicle_telemetry(req: func.HttpRequest) -> func.HttpResponse:
 @bp.route(route="telemetry", methods=["DELETE"], auth_level=func.AuthLevel.ANONYMOUS)
 def delete_all_telemetry(req: func.HttpRequest) -> func.HttpResponse:
     """Cancella TUTTI i documenti telemetria da Cosmos DB."""
-    from shared.cosmos_client import get_cosmos_container
+    from shared.cosmos_client import get_cosmos_container, get_partition_key_field
 
     container = get_cosmos_container()
     if not container:
         return func.HttpResponse("Cosmos non configurato", status_code=500)
 
+    pk_field = get_partition_key_field()
+
     try:
-        items = list(container.query_items(query="SELECT c.id FROM c", enable_cross_partition_query=True))
+        items = list(container.query_items(
+            query=f"SELECT c.id, c.{pk_field} FROM c",
+            enable_cross_partition_query=True
+        ))
 
+        deleted = 0
         for item in items:
-            container.delete_item(item=item["id"], partition_key=item["id"])
+            container.delete_item(item=item["id"], partition_key=item[pk_field])
+            deleted += 1
 
-        logging.info(f"🗑️ Deleted ALL {len(items)} docs")
-        return func.HttpResponse(json.dumps({"deleted": len(items)}), mimetype="application/json")
+        logging.info(f"🗑️ Deleted ALL {deleted} docs (PK: {pk_field})")
+        return func.HttpResponse(json.dumps({"deleted": deleted}), mimetype="application/json")
     except Exception as e:
         logging.error(f"Delete all error: {e}")
         return func.HttpResponse(f"Errore: {e}", status_code=500)
+

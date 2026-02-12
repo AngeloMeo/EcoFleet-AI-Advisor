@@ -113,6 +113,12 @@ const app = new Vue({
 
             try {
                 const res = await fetch(`${API_BASE}/telemetry/${this.selectedVehicle}`, { method: 'DELETE' });
+                if (!res.ok) {
+                    const errText = await res.text();
+                    console.error(`Reset failed (${res.status}):`, errText);
+                    alert(`Errore ${res.status}: ${errText}`);
+                    return;
+                }
                 const result = await res.json();
                 console.log(`Deleted ${result.deleted} docs for ${this.selectedVehicle}`);
                 
@@ -122,7 +128,7 @@ const app = new Vue({
                 this.clearChart();
             } catch (e) {
                 console.error("Reset error:", e);
-                alert("Errore durante il reset!");
+                alert("Errore durante il reset: " + e.message);
             }
         },
 
@@ -131,6 +137,12 @@ const app = new Vue({
 
             try {
                 const res = await fetch(`${API_BASE}/telemetry`, { method: 'DELETE' });
+                if (!res.ok) {
+                    const errText = await res.text();
+                    console.error(`Reset all failed (${res.status}):`, errText);
+                    alert(`Errore ${res.status}: ${errText}`);
+                    return;
+                }
                 const result = await res.json();
                 console.log(`Deleted ${result.deleted} docs total`);
 
@@ -140,7 +152,7 @@ const app = new Vue({
                 this.clearChart();
             } catch (e) {
                 console.error("Reset all error:", e);
-                alert("Errore durante il reset!");
+                alert("Errore durante il reset: " + e.message);
             }
         },
 
