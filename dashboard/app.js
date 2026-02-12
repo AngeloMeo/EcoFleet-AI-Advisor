@@ -1,3 +1,7 @@
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:7071/api'
+    : 'https://func-ecofleet-euhtfkfyhpbsapfp.italynorth-01.azurewebsites.net/api';
+
 const app = new Vue({
     el: '#app',
     data: {
@@ -6,11 +10,14 @@ const app = new Vue({
         latest: {
             speed: 0,
             rpm: 0,
-            ai_advice: 'In attesa...'
+            fuel_level: 100,
+            ai_advice: 'In attesa...',
+            alert_level: 'INFO'
         },
         vehicles: [],
         selectedVehicle: '',
         logs: [],
+        allData: [],   // Tutti i data point del veicolo selezionato (per stats)
         chart: null,
         chartData: {
             labels: [],
@@ -18,14 +25,43 @@ const app = new Vue({
             rpm: []
         }
     },
+    computed: {
+        avgSpeed() {
+            if (this.allData.length === 0) return '—';
+            const sum = this.allData.reduce((a, d) => a + (d.speed || 0), 0);
+            return (sum / this.allData.length).toFixed(1);
+        },
+        avgRpm() {
+            if (this.allData.length === 0) return '—';
+            const sum = this.allData.reduce((a, d) => a + (d.rpm || 0), 0);
+            return Math.round(sum / this.allData.length);
+        },
+        totalFuelConsumed() {
+            if (this.allData.length < 2) return '0.0';
+            let totalBurned = 0;
+            for (let i = 1; i < this.allData.length; i++) {
+                const prev = this.allData[i - 1].fuel_level ?? 100;
+                const curr = this.allData[i].fuel_level ?? 100;
+                const delta = prev - curr;
+                // Conta solo il consumo reale (delta > 0). Ignora i refuel (delta < 0)
+                if (delta > 0) totalBurned += delta;
+            }
+            return totalBurned.toFixed(1);
+        },
+        dataPointCount() {
+            return this.allData.length;
+        },
+        fuelClass() {
+            const lvl = this.latest.fuel_level || 0;
+            if (lvl > 50) return 'fuel-high';
+            if (lvl > 20) return 'fuel-mid';
+            return 'fuel-low';
+        }
+    },
     methods: {
         async fetchVehicles() {
             try {
-                let API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                    ? 'http://localhost:7071/api/vehicles'
-                    : 'https://func-ecofleet-euhtfkfyhpbsapfp.italynorth-01.azurewebsites.net/api/vehicles';
-
-                const response = await fetch(API_BASE_URL);
+                const response = await fetch(`${API_BASE}/vehicles`);
                 const data = await response.json();
                 this.vehicles = data;
                 
@@ -39,21 +75,27 @@ const app = new Vue({
         },
 
         async loadHistory(vehicleId) {
-            this.logs = []; 
-            this.chartData.labels = [];
+            // Reset stato
+            this.logs = [];
+            this.allData = [];
+            this.clearChart();
             
             try {
-                 let API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                    ? `http://localhost:7071/api/history/${vehicleId}`
-                    : `https://func-ecofleet-euhtfkfyhpbsapfp.italynorth-01.azurewebsites.net/api/history/${vehicleId}`;
-
-                const response = await fetch(API_URL);
+                const response = await fetch(`${API_BASE}/history/${vehicleId}`);
                 const history = await response.json();
                 
+                // history arriva ordinato DESC, lo invertiamo per cronologia
                 history.reverse().forEach(point => {
-                    this.updateDashboard(point); 
+                    this.allData.push(point);
+                    this.addToChart(point);
+                    this.logs.unshift(point);
                 });
-                
+
+                // Aggiorna KPI con l'ultimo punto
+                if (history.length > 0) {
+                    this.latest = history[history.length - 1];
+                }
+
             } catch (error) {
                 console.error("Errore caricamento storico:", error);
             }
@@ -61,36 +103,56 @@ const app = new Vue({
 
         changeVehicle() {
             if (this.selectedVehicle) {
-                this.chart.data.labels = [];
-                this.chart.data.datasets[0].data = [];
-                this.chart.data.datasets[1].data = [];
-                this.chart.update();
-                
                 this.loadHistory(this.selectedVehicle);
+            }
+        },
+
+        async resetCurrent() {
+            if (!this.selectedVehicle) return;
+            if (!confirm(`Cancellare tutti i dati di ${this.selectedVehicle}?`)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/telemetry/${this.selectedVehicle}`, { method: 'DELETE' });
+                const result = await res.json();
+                console.log(`Deleted ${result.deleted} docs for ${this.selectedVehicle}`);
+                
+                this.allData = [];
+                this.logs = [];
+                this.latest = { speed: 0, rpm: 0, fuel_level: 100, ai_advice: 'Dati resettati.', alert_level: 'INFO' };
+                this.clearChart();
+            } catch (e) {
+                console.error("Reset error:", e);
+                alert("Errore durante il reset!");
+            }
+        },
+
+        async resetAll() {
+            if (!confirm('Cancellare TUTTI i dati di TUTTI i veicoli?')) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/telemetry`, { method: 'DELETE' });
+                const result = await res.json();
+                console.log(`Deleted ${result.deleted} docs total`);
+
+                this.allData = [];
+                this.logs = [];
+                this.latest = { speed: 0, rpm: 0, fuel_level: 100, ai_advice: 'Tutti i dati resettati.', alert_level: 'INFO' };
+                this.clearChart();
+            } catch (e) {
+                console.error("Reset all error:", e);
+                alert("Errore durante il reset!");
             }
         },
 
         async initSignalR() {
             try {
                 this.statusMessage = 'Connessione in corso...';
-                
-                // 1. Chiamata a /api/negotiate per ottenere URL e Token
-                // Logica intelligente: Se siamo in locale usa localhost, altrimenti usa Azure
-                let API_BASE_URL = 'http://localhost:7071/api'; 
-                
-                if (window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost') {
-                    // ☁️ SIAMO SU AZURE!
-                    API_BASE_URL = 'https://func-ecofleet-euhtfkfyhpbsapfp.italynorth-01.azurewebsites.net/api';
-                }
 
-                console.log("Using API endpoint:", API_BASE_URL);
-                
                 const connection = new signalR.HubConnectionBuilder()
-                    .withUrl(API_BASE_URL) 
+                    .withUrl(API_BASE)
                     .configureLogging(signalR.LogLevel.Information)
                     .build();
 
-                // 2. Gestione eventi in arrivo
                 connection.on('newMessage', (message) => {
                     console.log("Dati ricevuti da SignalR:", message);
                     this.updateDashboard(message);
@@ -102,7 +164,6 @@ const app = new Vue({
                     setTimeout(() => this.initSignalR(), 5000);
                 });
 
-                // 3. Avvio connessione
                 await connection.start();
                 this.isConnected = true;
                 this.statusMessage = 'Connesso a SignalR 🟢';
@@ -120,31 +181,43 @@ const app = new Vue({
                 return;
             }
 
-            // Aggiorna valori KPI
             this.latest = data;
-
-            // Aggiungi a logs
+            this.allData.push(data);
             this.logs.unshift(data);
             if (this.logs.length > 50) this.logs.pop();
+            this.addToChart(data);
+        },
 
-            // Aggiorna Grafico
-            const timeLabel = new Date(data.timestamp).toLocaleTimeString();
-            
+        addToChart(data) {
+            const ts = data.timestamp;
+            // timestamp può essere ISO string o epoch
+            const timeLabel = typeof ts === 'number'
+                ? new Date(ts * 1000).toLocaleTimeString()
+                : new Date(ts).toLocaleTimeString();
+
             this.chart.data.labels.push(timeLabel);
             this.chart.data.datasets[0].data.push(data.speed);
             this.chart.data.datasets[1].data.push(data.rpm);
 
-            // Mantieni solo gli ultimi 20 punti
-            if (this.chart.data.labels.length > 20) {
+            if (this.chart.data.labels.length > 30) {
                 this.chart.data.labels.shift();
                 this.chart.data.datasets[0].data.shift();
                 this.chart.data.datasets[1].data.shift();
             }
 
+            this.chart.update('none'); // 'none' = skip animations for performance
+        },
+
+        clearChart() {
+            if (!this.chart) return;
+            this.chart.data.labels = [];
+            this.chart.data.datasets[0].data = [];
+            this.chart.data.datasets[1].data = [];
             this.chart.update();
         },
 
         formatTime(isoString) {
+            if (typeof isoString === 'number') return new Date(isoString * 1000).toLocaleTimeString();
             return new Date(isoString).toLocaleTimeString();
         },
 
@@ -157,15 +230,23 @@ const app = new Vue({
                     datasets: [{
                         label: 'Velocità (km/h)',
                         borderColor: '#4da3ff',
-                        backgroundColor: 'rgba(77, 163, 255, 0.1)',
+                        backgroundColor: 'rgba(77, 163, 255, 0.08)',
                         data: [],
-                        yAxisID: 'y'
+                        yAxisID: 'y',
+                        tension: 0.3,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true
                     }, {
                         label: 'RPM',
-                        borderColor: '#ff4d4d',
-                        backgroundColor: 'rgba(255, 77, 77, 0.1)',
+                        borderColor: '#a855f7',
+                        backgroundColor: 'rgba(168, 85, 247, 0.08)',
                         data: [],
-                        yAxisID: 'y1'
+                        yAxisID: 'y1',
+                        tension: 0.3,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true
                     }]
                 },
                 options: {
@@ -180,21 +261,27 @@ const app = new Vue({
                             type: 'linear',
                             display: true,
                             position: 'left',
-                            title: { display: true, text: 'Speed' }
+                            title: { display: true, text: 'Speed (km/h)', color: '#888' },
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            ticks: { color: '#888' }
                         },
                         y1: {
                             type: 'linear',
                             display: true,
                             position: 'right',
                             grid: { drawOnChartArea: false },
-                            title: { display: true, text: 'RPM' }
+                            title: { display: true, text: 'RPM', color: '#888' },
+                            ticks: { color: '#888' }
                         },
                         x: {
-                            grid: { color: '#444' }
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            ticks: { color: '#888', maxRotation: 0 }
                         }
                     },
                     plugins: {
-                        legend: { labels: { color: 'white' } }
+                        legend: {
+                            labels: { color: '#ccc', usePointStyle: true, padding: 16 }
+                        }
                     }
                 }
             });

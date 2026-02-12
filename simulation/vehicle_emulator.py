@@ -110,9 +110,11 @@ class VehicleSimulator:
             self.gear -= 1
             self.rpm += 1000
 
-        # Consumo proporzionale a RPM e velocità
-        self.fuel_level -= (self.rpm / 8000.0) * 0.08
-        if self.fuel_level < 0: self.fuel_level = 100  # Rifornimento magico
+        # Consumo proporzionale a RPM (esagerato: ~3 min per svuotare il serbatoio)
+        fuel_burn = (self.rpm / 2500.0) * 2.0
+        self.fuel_level -= fuel_burn
+        if self.fuel_level <= 0:
+            self.fuel_level = 0  # Segnala vuoto, il refuel avviene nel loop run()
 
     def get_telemetry(self):
         return {
@@ -142,6 +144,16 @@ class VehicleSimulator:
                 self.queue_client.send_message(json.dumps(data))
             except Exception as e:
                 logger.error(f"[{self.vehicle_id}] Queue send error: {e}")
+
+            # Refuel realistico: fermata ai box
+            if self.fuel_level <= 0:
+                logger.warning(f"⛽🔴 [{self.vehicle_id}] SERBATOIO VUOTO! Pit-stop rifornimento...")
+                self.speed = 0
+                self.rpm = 800
+                self.gear = 1
+                await asyncio.sleep(2)  # Pausa pit-stop
+                self.fuel_level = 100.0
+                logger.warning(f"⛽🟢 [{self.vehicle_id}] Rifornimento completato! Si riparte.")
                 
             await asyncio.sleep(TELEMETRY_INTERVAL_SEC + random.uniform(0, 1))
 
