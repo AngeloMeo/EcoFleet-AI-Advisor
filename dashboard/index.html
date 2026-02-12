@@ -19,8 +19,28 @@
     <div id="app" class="container">
         <header>
             <h1>🏎️ EcoFleet AI Advisor</h1>
-            <div class="status-indicator" :class="{ connected: isConnected }">
-                {{ statusMessage }}
+            <div class="header-right">
+                <!-- Profile Button -->
+                <div class="profile-wrapper" v-if="user">
+                    <button class="profile-btn" @click="showProfileMenu = !showProfileMenu">
+                        <span class="profile-avatar">{{ userInitials }}</span>
+                        <span class="profile-name">{{ user.name }}</span>
+                    </button>
+                    <div class="profile-dropdown" v-if="showProfileMenu" @click.stop>
+                        <div class="profile-header">
+                            <span class="profile-avatar-lg">{{ userInitials }}</span>
+                            <div class="profile-info">
+                                <div class="profile-fullname">{{ user.name }}</div>
+                                <div class="profile-email">{{ user.email }}</div>
+                            </div>
+                        </div>
+                        <div class="profile-divider"></div>
+                        <a href="/.auth/logout" class="profile-logout-btn">🚪 Logout</a>
+                    </div>
+                </div>
+                <div class="status-indicator" :class="{ connected: isConnected }">
+                    {{ statusMessage }}
+                </div>
             </div>
         </header>
 

@@ -18,6 +18,8 @@ const app = new Vue({
         selectedVehicle: '',
         logs: [],
         allData: [],   // Tutti i data point del veicolo selezionato (per stats)
+        user: null,
+        showProfileMenu: false,
         chart: null,
         chartData: {
             labels: [],
@@ -26,6 +28,10 @@ const app = new Vue({
         }
     },
     computed: {
+        userInitials() {
+            if (!this.user || !this.user.name) return '?';
+            return this.user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        },
         avgSpeed() {
             if (this.allData.length === 0) return '—';
             const sum = this.allData.reduce((a, d) => a + (d.speed || 0), 0);
@@ -59,6 +65,28 @@ const app = new Vue({
         }
     },
     methods: {
+        async fetchUserProfile() {
+            try {
+                const res = await fetch('/.auth/me');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.length > 0) {
+                        const claims = data[0].user_claims || [];
+                        const getClaim = (type) => {
+                            const c = claims.find(c => c.typ === type || c.typ.endsWith('/' + type));
+                            return c ? c.val : '';
+                        };
+                        this.user = {
+                            name: getClaim('name') || data[0].user_id || 'Utente',
+                            email: getClaim('preferred_username') || getClaim('emailaddress') || data[0].user_id || ''
+                        };
+                    }
+                }
+            } catch (e) {
+                console.log('Auth info non disponibile (dev locale)');
+            }
+        },
+
         async fetchVehicles() {
             try {
                 const response = await fetch(`${API_BASE}/vehicles`);
@@ -301,7 +329,15 @@ const app = new Vue({
     },
     mounted() {
         this.initChart();
+        this.fetchUserProfile();
         this.fetchVehicles();
         this.initSignalR();
+
+        // Chiudi dropdown profilo cliccando fuori
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.profile-wrapper')) {
+                this.showProfileMenu = false;
+            }
+        });
     }
 });
