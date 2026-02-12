@@ -19,6 +19,7 @@ const app = new Vue({
         logs: [],
         allData: [],   // Tutti i data point del veicolo selezionato (per stats)
         user: null,
+        authToken: '',
         showProfileMenu: false,
         chart: null,
         chartData: {
@@ -80,6 +81,7 @@ const app = new Vue({
                             name: getClaim('name') || data[0].user_id || 'Utente',
                             email: getClaim('preferred_username') || getClaim('emailaddress') || data[0].user_id || ''
                         };
+                        this.authToken = data[0].access_token || '';
                     }
                 }
             } catch (e) {
@@ -87,9 +89,14 @@ const app = new Vue({
             }
         },
 
+        authHeaders() {
+            if (!this.authToken) return {};
+            return { 'Authorization': `Bearer ${this.authToken}` };
+        },
+
         async fetchVehicles() {
             try {
-                const response = await fetch(`${API_BASE}/vehicles`);
+                const response = await fetch(`${API_BASE}/vehicles`, { headers: this.authHeaders() });
                 const data = await response.json();
                 this.vehicles = data;
                 
@@ -109,7 +116,7 @@ const app = new Vue({
             this.clearChart();
             
             try {
-                const response = await fetch(`${API_BASE}/history/${vehicleId}`);
+                const response = await fetch(`${API_BASE}/history/${vehicleId}`, { headers: this.authHeaders() });
                 const history = await response.json();
                 
                 // history arriva ordinato DESC, lo invertiamo per cronologia
@@ -140,7 +147,7 @@ const app = new Vue({
             if (!confirm(`Cancellare tutti i dati di ${this.selectedVehicle}?`)) return;
 
             try {
-                const res = await fetch(`${API_BASE}/telemetry/${this.selectedVehicle}`, { method: 'DELETE' });
+                const res = await fetch(`${API_BASE}/telemetry/${this.selectedVehicle}`, { method: 'DELETE', headers: this.authHeaders() });
                 if (!res.ok) {
                     const errText = await res.text();
                     console.error(`Reset failed (${res.status}):`, errText);
@@ -164,7 +171,7 @@ const app = new Vue({
             if (!confirm('Cancellare TUTTI i dati di TUTTI i veicoli?')) return;
 
             try {
-                const res = await fetch(`${API_BASE}/telemetry`, { method: 'DELETE' });
+                const res = await fetch(`${API_BASE}/telemetry`, { method: 'DELETE', headers: this.authHeaders() });
                 if (!res.ok) {
                     const errText = await res.text();
                     console.error(`Reset all failed (${res.status}):`, errText);
@@ -188,8 +195,12 @@ const app = new Vue({
             try {
                 this.statusMessage = 'Connessione in corso...';
 
+                const signalROptions = this.authToken
+                    ? { accessTokenFactory: () => this.authToken }
+                    : {};
+
                 const connection = new signalR.HubConnectionBuilder()
-                    .withUrl(API_BASE)
+                    .withUrl(API_BASE, signalROptions)
                     .configureLogging(signalR.LogLevel.Information)
                     .build();
 
@@ -327,9 +338,9 @@ const app = new Vue({
             });
         }
     },
-    mounted() {
+    async mounted() {
         this.initChart();
-        this.fetchUserProfile();
+        await this.fetchUserProfile(); // prima carica il token
         this.fetchVehicles();
         this.initSignalR();
 
