@@ -237,6 +237,11 @@ const app = new Vue({
                 return;
             }
 
+            // Preserva l'advice esistente se la nuova telemetria non ne ha uno
+            if (!data.ai_advice && this.latest && this.latest.vehicle_id === data.vehicle_id) {
+                data.ai_advice = this.latest.ai_advice;
+                data.alert_level = this.latest.alert_level;
+            }
             this.latest = data;
             this.allData.push(data);
             this.logs.unshift(data);
