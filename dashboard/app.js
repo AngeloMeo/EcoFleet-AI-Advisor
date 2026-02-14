@@ -106,6 +106,11 @@ const app = new Vue({
             setInterval(() => this.refreshAuthToken(), 45 * 60 * 1000);
         },
 
+        authHeaders() {
+            if (!this.authToken) return {};
+            return { 'Authorization': `Bearer ${this.authToken}` };
+        },
+
         async fetchVehicles() {
             try {
                 const response = await fetch(`${API_BASE}/vehicles`, { headers: this.authHeaders() });
