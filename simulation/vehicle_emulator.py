@@ -35,13 +35,14 @@ VEHICLE_COUNT = 5
 TELEMETRY_INTERVAL_SEC = 5  # Secondi tra un invio e l'altro per ogni veicolo
 
 class VehicleSimulator:
-    def __init__(self, vehicle_id, device_conn_str, queue_client):
+    def __init__(self, vehicle_id, device_conn_str, queue_client, aggressive=False):
         self.vehicle_id = vehicle_id
         self.device_conn_str = device_conn_str
         self.queue_client = queue_client
         self.device_client = None
         self.running = True
         self.last_feedback = "In attesa di feedback..."
+        self.aggressive = aggressive
         
         # Fisica Base
         self.speed = 0.0
@@ -78,26 +79,37 @@ class VehicleSimulator:
             logger.error(f"[{self.vehicle_id}] ❌ Connection Failed: {e}")
 
     async def update_physics(self):
-        # Decisione di guida: accelera, frena, o guida aggressivamente
-        action = random.random()
-        
-        if action < 0.10:
-            # 10% chance: frenata brusca (traffico, semaforo)
-            brake_force = random.uniform(5, 15)
-            self.speed -= brake_force
-        elif action < 0.20:
-            # 10% chance: accelerata aggressiva
-            self.speed += random.uniform(8, 20)
-        elif self.speed < self.gears[self.gear]['max'] - 5:
-            # Accelerazione normale
-            self.speed += random.uniform(1.0, 5.0)
-        elif self.speed > self.gears[self.gear]['max']:
-            self.speed -= random.uniform(1.0, 3.0)
-        
-        # Attrito/resistenza
-        self.speed -= 0.2
-        if self.speed < 0: self.speed = 0
-        if self.speed > 180: self.speed = 180  # Cap fisico
+        if self.aggressive:
+            # 🔥 GUIDA AGGRESSIVA: accelera sempre, non scala mai, frena poco
+            self.speed += random.uniform(5, 25)
+            if random.random() < 0.05:  # 5% chance frenata
+                self.speed -= random.uniform(10, 30)
+            self.speed -= 0.1
+            if self.speed < 20: self.speed = 20  # Mai troppo lento
+            if self.speed > 180: self.speed = 180
+            # Resta in marce basse → RPM altissimi
+            if self.gear > 3: self.gear = 3
+        else:
+            # Decisione di guida: accelera, frena, o guida aggressivamente
+            action = random.random()
+            
+            if action < 0.10:
+                # 10% chance: frenata brusca (traffico, semaforo)
+                brake_force = random.uniform(5, 15)
+                self.speed -= brake_force
+            elif action < 0.20:
+                # 10% chance: accelerata aggressiva
+                self.speed += random.uniform(8, 20)
+            elif self.speed < self.gears[self.gear]['max'] - 5:
+                # Accelerazione normale
+                self.speed += random.uniform(1.0, 5.0)
+            elif self.speed > self.gears[self.gear]['max']:
+                self.speed -= random.uniform(1.0, 3.0)
+            
+            # Attrito/resistenza
+            self.speed -= 0.2
+            if self.speed < 0: self.speed = 0
+            if self.speed > 180: self.speed = 180  # Cap fisico
             
         # RPM con variazione marcata
         base_rpm = self.speed * self.gears[self.gear]['ratio'] * 40
@@ -234,7 +246,11 @@ async def main():
     logger.info("🚀 Starting Fleet Simulation... (CTRL+C to stop)")
     
     for conf in fleet_config:
-        sim = VehicleSimulator(conf['id'], conf['conn_str'], queue_client)
+        is_aggressive = conf['id'] == "Bus-05"
+        sim = VehicleSimulator(conf['id'], conf['conn_str'], queue_client, aggressive=is_aggressive)
+        if is_aggressive:
+            logger.warning(f"🔥 {conf['id']} è in modalità PAZZO SCATENATO!")
+
         simulators.append(sim)
         await sim.connect()
         tasks.append(asyncio.create_task(sim.run()))
