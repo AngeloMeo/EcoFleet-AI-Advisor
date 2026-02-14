@@ -12,17 +12,17 @@ bp = func.Blueprint()
 
 # =============================================================================
 # FUNCTION 1: ProcessTelemetry (FAST — nessuna attesa per Gemini)
-# Salva telemetria su Cosmos, invia a SignalR, inoltra alla advice-queue
+# Riceve D2C da IoT Hub, salva su Cosmos, invia a SignalR, inoltra ad advice-queue
 # =============================================================================
-@bp.queue_trigger(arg_name="msg", queue_name="telemetry-queue", connection="AzureStorageQueueConnectionString")
+@bp.event_hub_message_trigger(arg_name="event", event_hub_name="%IoTHubEventHubName%", connection="IoTHubEventHubConnectionString", consumer_group="$Default")
 @bp.cosmos_db_output(arg_name="outputDocument", database_name="EcoFleetDB", container_name="Telemetry", connection="CosmosDBConnectionString", create_if_not_exists=True)
 @bp.generic_output_binding(arg_name="signalRMessages", type="signalR", hubName="telemetryHub", connectionStringSetting="SignalRConnectionString")
 @bp.queue_output(arg_name="adviceQueue", queue_name="advice-queue", connection="AzureStorageQueueConnectionString")
-def ProcessTelemetry(msg: func.QueueMessage, outputDocument: func.Out[func.Document], signalRMessages: func.Out[str], adviceQueue: func.Out[str]):
-    logging.info(f"📡 Telemetry received: {msg.get_body().decode('utf-8')}")
+def ProcessTelemetry(event: func.EventHubEvent, outputDocument: func.Out[func.Document], signalRMessages: func.Out[str], adviceQueue: func.Out[str]):
+    body = event.get_body().decode('utf-8')
+    logging.info(f"📡 D2C Telemetry received from IoT Hub: {body}")
     
     try:
-        body = msg.get_body().decode('utf-8')
         telemetry = json.loads(body)
     except Exception as e:
         logging.error(f"Error parsing message: {e}")
@@ -33,7 +33,7 @@ def ProcessTelemetry(msg: func.QueueMessage, outputDocument: func.Out[func.Docum
     fuel_level = telemetry.get("fuel_level", 100)
     vehicle_id = telemetry.get("vehicle_id")
 
-    doc_id = hashlib.sha256(msg.get_body()).hexdigest()
+    doc_id = hashlib.sha256(event.get_body()).hexdigest()
 
     # Documento Cosmos DB (senza advice — verrà aggiornato da GenerateAdvice)
     doc = {

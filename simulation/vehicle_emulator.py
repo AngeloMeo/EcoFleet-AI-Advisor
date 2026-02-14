@@ -10,8 +10,8 @@ load_dotenv()
 
 # Azure SDKs
 from azure.iot.device.aio import IoTHubDeviceClient
+from azure.iot.device import Message
 from azure.iot.hub import IoTHubRegistryManager
-from azure.storage.queue import QueueClient, TextBase64EncodePolicy
 
 # --- CONFIGURAZIONE LOGGER ---
 logging.basicConfig(
@@ -27,18 +27,15 @@ for noisy in ["azure.core", "azure.iot", "azure.storage", "urllib3", "uamqp", "m
 
 # --- CONFIGURAZIONE ENV ---
 IOTHUB_SERVICE_CONN_STR = os.getenv("IOTHUB_SERVICE_CONNECTION_STRING")
-STORAGE_CONN_STR = os.getenv("STORAGE_CONNECTION_STRING")
-QUEUE_NAME = "telemetry-queue"
 
 VEHICLE_PREFIX = "Bus-"
 VEHICLE_COUNT = 5
 TELEMETRY_INTERVAL_SEC = 5  # Secondi tra un invio e l'altro per ogni veicolo
 
 class VehicleSimulator:
-    def __init__(self, vehicle_id, device_conn_str, queue_client, aggressive=False):
+    def __init__(self, vehicle_id, device_conn_str, aggressive=False):
         self.vehicle_id = vehicle_id
         self.device_conn_str = device_conn_str
-        self.queue_client = queue_client
         self.device_client = None
         self.running = True
         self.last_feedback = "In attesa di feedback..."
@@ -156,9 +153,12 @@ class VehicleSimulator:
             )
             
             try:
-                self.queue_client.send_message(json.dumps(data))
+                msg = Message(json.dumps(data))
+                msg.content_type = "application/json"
+                msg.content_encoding = "utf-8"
+                await self.device_client.send_message(msg)
             except Exception as e:
-                logger.error(f"[{self.vehicle_id}] Queue send error: {e}")
+                logger.error(f"[{self.vehicle_id}] D2C send error: {e}")
 
             # Refuel realistico: fermata ai box
             if self.fuel_level <= 0:
@@ -216,30 +216,18 @@ def provision_fleet(service_conn_string, count):
     return devices_config
 
 async def main():
-    if not IOTHUB_SERVICE_CONN_STR or not STORAGE_CONN_STR:
-        logger.error("Missing Environment Variables! Set IOTHUB_SERVICE_CONNECTION_STRING & STORAGE_CONNECTION_STRING")
+    if not IOTHUB_SERVICE_CONN_STR:
+        logger.error("Missing IOTHUB_SERVICE_CONNECTION_STRING!")
         return
 
-    # 1. Setup Queue
-    try:
-        queue_client = QueueClient.from_connection_string(
-            STORAGE_CONN_STR, 
-            QUEUE_NAME,
-            message_encode_policy=TextBase64EncodePolicy()
-        )
-        logger.info(f"✅ Connected to Storage Queue: {QUEUE_NAME}")
-    except Exception as e:
-        logger.critical(f"Queue Connection Failed: {e}")
-        return
-
-    # 2. Provisioning (Persistente)
+    # 1. Provisioning (Persistente)
     try:
         fleet_config = provision_fleet(IOTHUB_SERVICE_CONN_STR, VEHICLE_COUNT)
     except Exception as e:
         logger.critical(f"Provisioning Failed: {e}")
         return
 
-    # 3. Avvio Simulazione
+    # 2. Avvio Simulazione
     simulators = []
     tasks = []
 
@@ -247,7 +235,7 @@ async def main():
     
     for conf in fleet_config:
         is_aggressive = conf['id'] == "Bus-05"
-        sim = VehicleSimulator(conf['id'], conf['conn_str'], queue_client, aggressive=is_aggressive)
+        sim = VehicleSimulator(conf['id'], conf['conn_str'], aggressive=is_aggressive)
         if is_aggressive:
             logger.warning(f"🔥 {conf['id']} è in modalità PAZZO SCATENATO!")
 
