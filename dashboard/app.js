@@ -204,9 +204,14 @@ const app = new Vue({
                     .configureLogging(signalR.LogLevel.Information)
                     .build();
 
-                connection.on('newMessage', (message) => {
-                    console.log("Dati ricevuti da SignalR:", message);
+                connection.on('newTelemetry', (message) => {
+                    console.log("📡 Telemetry ricevuta:", message);
                     this.updateDashboard(message);
+                });
+
+                connection.on('newAdvice', (advice) => {
+                    console.log("🤖 AI Advice ricevuto:", advice);
+                    this.updateAdvice(advice);
                 });
 
                 connection.onclose(() => {
@@ -237,6 +242,22 @@ const app = new Vue({
             this.logs.unshift(data);
             if (this.logs.length > 50) this.logs.pop();
             this.addToChart(data);
+        },
+
+        updateAdvice(advice) {
+            // Aggiorna l'advice nella card KPI se è il veicolo corrente
+            if (this.latest && this.latest.vehicle_id === advice.vehicle_id) {
+                this.latest.ai_advice = advice.ai_advice;
+                this.latest.alert_level = advice.alert_level;
+            }
+            // Aggiorna anche il log corrispondente
+            const logEntry = this.logs.find(
+                l => l.vehicle_id === advice.vehicle_id && !l.ai_advice
+            );
+            if (logEntry) {
+                logEntry.ai_advice = advice.ai_advice;
+                logEntry.alert_level = advice.alert_level;
+            }
         },
 
         addToChart(data) {
