@@ -23,7 +23,7 @@ def get_vehicles(req: func.HttpRequest, documents: func.DocumentList) -> func.Ht
 @bp.cosmos_db_input(arg_name="documents",
                     database_name="EcoFleetDB",
                     container_name="Telemetry",
-                    sql_query="SELECT * FROM c WHERE c.vehicle_id = {vehicleId} ORDER BY c.timestamp DESC OFFSET 0 LIMIT 20",
+                    sql_query="SELECT * FROM c WHERE c.vehicle_id = {vehicleId} ORDER BY c.timestamp DESC OFFSET 0 LIMIT 200",
                     connection="CosmosDBConnectionString")
 def get_vehicle_history(req: func.HttpRequest, documents: func.DocumentList) -> func.HttpResponse:
     vehicle_id = req.route_params.get("vehicleId")
