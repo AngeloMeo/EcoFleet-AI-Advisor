@@ -2,6 +2,7 @@ import logging
 import os
 
 from pydantic import BaseModel, Field
+from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 logger = logging.getLogger(__name__)
@@ -27,11 +28,11 @@ def _get_llm():
             logger.warning("⚠️ GOOGLE_API_KEY non configurata. AI Advisor in modalità fallback.")
             return None
         _llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+            model="gemini-2.5-flash-lite",
             google_api_key=api_key,
             temperature=0.3,
         )
-        logger.info("✅ Gemini 2.5 Flash inizializzato via LangChain")
+        logger.info("✅ Gemini 2.5 Flash Lite inizializzato via LangChain")
     return _llm
 
 
@@ -93,8 +94,8 @@ def get_ai_advice(speed: float, rpm: int, fuel_level: float) -> TelemetryAdvice:
             f"- Livello carburante: {fuel_level}%"
         )
         result = structured_llm.invoke([
-            ("system", SYSTEM_PROMPT),
-            ("human", user_message),
+            SystemMessage(content=SYSTEM_PROMPT),
+            HumanMessage(content=user_message),
         ])
         logger.info(f"🤖 Gemini advice: {result.advice} [{result.alert_level}]")
         return result

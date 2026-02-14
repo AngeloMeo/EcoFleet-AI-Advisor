@@ -1,4 +1,5 @@
 azure-iot-device
 azure-iot-hub
 azure-storage-queue
+python-dotenv
 six

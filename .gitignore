@@ -10,6 +10,7 @@ env/
 # Azure Functions
 local.settings.json
 app_data/
+.env
 
 # IDE
 .vscode/

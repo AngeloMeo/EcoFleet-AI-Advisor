@@ -5,6 +5,9 @@ import time
 import os
 import logging
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # Azure SDKs
 from azure.iot.device.aio import IoTHubDeviceClient
 from azure.iot.hub import IoTHubRegistryManager
