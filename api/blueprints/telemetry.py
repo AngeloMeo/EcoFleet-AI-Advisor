@@ -6,6 +6,7 @@ import datetime
 import azure.functions as func
 
 from shared.iot_hub import get_iot_registry_manager
+from shared.ai_advisor import get_ai_advice
 
 bp = func.Blueprint()
 
@@ -13,7 +14,7 @@ bp = func.Blueprint()
 @bp.cosmos_db_output(arg_name="outputDocument", database_name="EcoFleetDB", container_name="Telemetry", connection="CosmosDBConnectionString", create_if_not_exists=True)
 @bp.generic_output_binding(arg_name="signalRMessages", type="signalR", hubName="telemetryHub", connectionStringSetting="SignalRConnectionString")
 def ProcessTelemetry(msg: func.QueueMessage, outputDocument: func.Out[func.Document], signalRMessages: func.Out[str]):
-    logging.info(f"🚀 TRIGGERED (V2 Model)! Message body: {msg.get_body().decode('utf-8')}")
+    logging.info(f"🚀 TRIGGERED! Message body: {msg.get_body().decode('utf-8')}")
     
     try:
         body = msg.get_body().decode('utf-8')
@@ -22,24 +23,15 @@ def ProcessTelemetry(msg: func.QueueMessage, outputDocument: func.Out[func.Docum
         logging.error(f"Error parsing message: {e}")
         return
 
-    # --- REAL AI LOGIC & FEEDBACK LOOP ---
+    # --- AI ADVICE (Gemini 2.5 Flash via LangChain) ---
     speed = telemetry.get("speed", 0)
     rpm = telemetry.get("rpm", 0)
     fuel_level = telemetry.get("fuel_level", 100)
     vehicle_id = telemetry.get("vehicle_id")
     
-    advice = "Guida ottimale. Continua così!"
-    alert_level = "INFO" # INFO, WARN, CRITICAL
-
-    if rpm > 3000:
-        advice = "Giri troppo alti! Cambia marcia per risparmiare carburante."
-        alert_level = "WARN"
-    elif speed > 130:
-        advice = "Stai superando i limiti. Rallenta per sicurezza e consumi."
-        alert_level = "CRITICAL"
-    elif speed < 10 and rpm > 1000:
-        advice = "Sei fermo o quasi. Spegni il motore se la sosta è lunga."
-        alert_level = "WARN"
+    result = get_ai_advice(speed, rpm, fuel_level)
+    advice = result.advice
+    alert_level = result.alert_level
         
     logging.info(f"AI Advice: {advice} [{alert_level}]")
 

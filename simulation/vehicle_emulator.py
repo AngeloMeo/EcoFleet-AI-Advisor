@@ -29,7 +29,7 @@ QUEUE_NAME = "telemetry-queue"
 
 VEHICLE_PREFIX = "Bus-"
 VEHICLE_COUNT = 5
-TELEMETRY_INTERVAL_SEC = 3  # Secondi tra un invio e l'altro per ogni veicolo
+TELEMETRY_INTERVAL_SEC = 5  # Secondi tra un invio e l'altro per ogni veicolo
 
 class VehicleSimulator:
     def __init__(self, vehicle_id, device_conn_str, queue_client):

@@ -2,3 +2,6 @@ azure-functions
 azure-cosmos
 azure-identity
 azure-iot-hub
+langchain-google-genai
+langchain-core
+pydantic
