@@ -89,9 +89,21 @@ const app = new Vue({
             }
         },
 
-        authHeaders() {
-            if (!this.authToken) return {};
-            return { 'Authorization': `Bearer ${this.authToken}` };
+        async refreshAuthToken() {
+            try {
+                // Chiedi a EasyAuth di rinnovare il token
+                await fetch('/.auth/refresh');
+                // Ri-carica il token aggiornato
+                await this.fetchUserProfile();
+                console.log('🔄 Token rinnovato');
+            } catch (e) {
+                console.warn('⚠️ Impossibile rinnovare il token:', e);
+            }
+        },
+
+        startTokenRefreshTimer() {
+            // Rinnova il token ogni 45 minuti (EasyAuth scade dopo ~1h)
+            setInterval(() => this.refreshAuthToken(), 45 * 60 * 1000);
         },
 
         async fetchVehicles() {
@@ -367,6 +379,7 @@ const app = new Vue({
     async mounted() {
         this.initChart();
         await this.fetchUserProfile(); // prima carica il token
+        this.startTokenRefreshTimer(); // rinnova automaticamente ogni 45min
         this.fetchVehicles();
         this.initSignalR();
 
