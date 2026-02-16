@@ -18,11 +18,12 @@ class TelemetryAdvice(BaseModel):
 # --- Singleton LLM Client ---
 
 _llm = None
+_structured_llm = None
 
-def _get_llm():
-    """Lazy singleton: crea il client LLM una sola volta per processo."""
-    global _llm
-    if _llm is None:
+def _get_structured_llm():
+    """Lazy singleton: crea il client LLM + wrapper strutturato una sola volta per processo."""
+    global _llm, _structured_llm
+    if _structured_llm is None:
         api_key = os.environ.get("GOOGLE_API_KEY")
         if not api_key:
             logger.warning("⚠️ GOOGLE_API_KEY non configurata. AI Advisor in modalità fallback.")
@@ -32,8 +33,9 @@ def _get_llm():
             google_api_key=api_key,
             temperature=0.3,
         )
-        logger.info("✅ Gemini 2.5 Flash Lite inizializzato via LangChain")
-    return _llm
+        _structured_llm = _llm.with_structured_output(TelemetryAdvice)
+        logger.info("✅ Gemini 2.5 Flash Lite inizializzato via LangChain (structured output cached)")
+    return _structured_llm
 
 
 # --- Prompt Template ---
@@ -81,12 +83,11 @@ def _fallback_advice(speed: float, rpm: int, fuel_level: float) -> TelemetryAdvi
 
 def get_ai_advice(speed: float, rpm: int, fuel_level: float) -> TelemetryAdvice:
     """Genera un consiglio AI sui dati telemetrici. Fallback a regole se Gemini non disponibile."""
-    llm = _get_llm()
-    if llm is None:
+    structured_llm = _get_structured_llm()
+    if structured_llm is None:
         return _fallback_advice(speed, rpm, fuel_level)
 
     try:
-        structured_llm = llm.with_structured_output(TelemetryAdvice)
         user_message = (
             f"Dati telemetrici:\n"
             f"- Velocità: {speed} km/h\n"
