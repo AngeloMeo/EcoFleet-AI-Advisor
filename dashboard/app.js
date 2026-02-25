@@ -1,3 +1,16 @@
+// ── Application Insights ──
+const appInsights = new Microsoft.ApplicationInsights.ApplicationInsights({
+    config: {
+        connectionString: 'InstrumentationKey=47839450-6abb-4d58-ab4d-609959825ba0;IngestionEndpoint=https://italynorth-0.in.applicationinsights.azure.com/;LiveEndpoint=https://italynorth.livediagnostics.monitor.azure.com/;ApplicationId=963dc218-6fe0-47c2-965a-dcd3a48c812f',
+        disableFetchTracking: false,
+        enableCorsCorrelation: true,
+        enableRequestHeaderTracking: true,
+        enableResponseHeaderTracking: true
+    }
+});
+appInsights.loadAppInsights();
+appInsights.trackPageView({ name: 'EcoFleet Dashboard' });
+
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:7071/api'
     : 'https://func-ecofleet-euhtfkfyhpbsapfp.italynorth-01.azurewebsites.net/api';
@@ -86,6 +99,7 @@ const app = new Vue({
                 }
             } catch (e) {
                 console.log('Auth info non disponibile (dev locale)');
+                appInsights.trackException({ exception: e, properties: { operation: 'fetchUserProfile' } });
             }
         },
 
@@ -98,6 +112,7 @@ const app = new Vue({
                 console.log('🔄 Token rinnovato');
             } catch (e) {
                 console.warn('⚠️ Impossibile rinnovare il token:', e);
+                appInsights.trackException({ exception: e, properties: { operation: 'refreshAuthToken' } });
             }
         },
 
@@ -123,6 +138,7 @@ const app = new Vue({
                 }
             } catch (error) {
                 console.error("Errore caricamento veicoli:", error);
+                appInsights.trackException({ exception: error, properties: { operation: 'fetchVehicles' } });
             }
         },
 
@@ -150,11 +166,13 @@ const app = new Vue({
 
             } catch (error) {
                 console.error("Errore caricamento storico:", error);
+                appInsights.trackException({ exception: error, properties: { operation: 'loadHistory', vehicleId } });
             }
         },
 
         changeVehicle() {
             if (this.selectedVehicle) {
+                appInsights.trackEvent({ name: 'VehicleChanged' }, { vehicleId: this.selectedVehicle });
                 this.loadHistory(this.selectedVehicle);
             }
         },
@@ -173,6 +191,7 @@ const app = new Vue({
                 }
                 const result = await res.json();
                 console.log(`Deleted ${result.deleted} docs for ${this.selectedVehicle}`);
+                appInsights.trackEvent({ name: 'ResetVehicle' }, { vehicleId: this.selectedVehicle, deletedCount: result.deleted });
                 
                 this.allData = [];
                 this.logs = [];
@@ -180,6 +199,7 @@ const app = new Vue({
                 this.clearChart();
             } catch (e) {
                 console.error("Reset error:", e);
+                appInsights.trackException({ exception: e, properties: { operation: 'resetCurrent', vehicleId: this.selectedVehicle } });
                 alert("Errore durante il reset: " + e.message);
             }
         },
@@ -197,6 +217,7 @@ const app = new Vue({
                 }
                 const result = await res.json();
                 console.log(`Deleted ${result.deleted} docs total`);
+                appInsights.trackEvent({ name: 'ResetAll' }, { deletedCount: result.deleted });
 
                 this.allData = [];
                 this.logs = [];
@@ -204,6 +225,7 @@ const app = new Vue({
                 this.clearChart();
             } catch (e) {
                 console.error("Reset all error:", e);
+                appInsights.trackException({ exception: e, properties: { operation: 'resetAll' } });
                 alert("Errore durante il reset: " + e.message);
             }
         },
@@ -241,9 +263,11 @@ const app = new Vue({
                 this.isConnected = true;
                 this.statusMessage = 'Connesso a SignalR 🟢';
                 console.log("SignalR Connected!");
+                appInsights.trackEvent({ name: 'SignalRConnected' });
 
             } catch (err) {
                 console.error("Errore SignalR:", err);
+                appInsights.trackException({ exception: err, properties: { operation: 'initSignalR' } });
                 this.statusMessage = 'Errore Connessione';
                 setTimeout(() => this.initSignalR(), 5000);
             }
@@ -253,6 +277,7 @@ const app = new Vue({
             if (this.selectedVehicle && data.vehicle_id !== this.selectedVehicle) {
                 return;
             }
+            appInsights.trackEvent({ name: 'TelemetryReceived' }, { vehicleId: data.vehicle_id, speed: data.speed, rpm: data.rpm });
 
             // Preserva l'advice esistente se la nuova telemetria non ne ha uno
             if (!data.ai_advice && this.latest && this.latest.vehicle_id === data.vehicle_id) {
