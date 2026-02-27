@@ -7,7 +7,6 @@ const CACHE_NAME = 'ecofleet-v2';
 // Asset statici da pre-cacheare all'installazione
 const PRECACHE_URLS = [
     './',
-    './index.html',
     './app.js',
     './style.css',
     './manifest.json',

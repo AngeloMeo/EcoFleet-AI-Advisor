@@ -2,7 +2,7 @@
   "name": "EcoFleet AI Advisor",
   "short_name": "EcoFleet",
   "description": "Dashboard real-time per il monitoraggio della flotta con AI Advisor integrato",
-  "start_url": "./index.html",
+  "start_url": "./",
   "display": "standalone",
   "orientation": "any",
   "theme_color": "#0f1117",
