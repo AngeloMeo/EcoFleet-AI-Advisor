@@ -10,7 +10,7 @@ const PRECACHE_URLS = [
     './app.js',
     './style.css',
     './manifest.json',
-    './benchmark/',
+    './benchmark/index.html',
     './benchmark/benchmark.js',
     './icons/icon-192.png',
     './icons/icon-512.png',
