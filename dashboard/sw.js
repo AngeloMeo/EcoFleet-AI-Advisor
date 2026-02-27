@@ -2,7 +2,7 @@
 // EcoFleet AI Advisor — Service Worker (PWA)
 // ============================================
 
-const CACHE_NAME = 'ecofleet-v1';
+const CACHE_NAME = 'ecofleet-v2';
 
 // Asset statici da pre-cacheare all'installazione
 const PRECACHE_URLS = [
@@ -52,6 +52,9 @@ self.addEventListener('fetch', (event) => {
 
     // Skip non-GET requests (SignalR WebSocket, POST, DELETE, etc.)
     if (request.method !== 'GET') return;
+
+    // Skip Azure EasyAuth endpoints — MAI cacheare token/sessioni
+    if (url.pathname.startsWith('/.auth/')) return;
 
     // Skip SignalR negotiate / WebSocket upgrade
     if (url.pathname.includes('/negotiate') || url.pathname.includes('/signalr')) return;
