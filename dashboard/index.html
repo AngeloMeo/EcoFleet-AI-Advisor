@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EcoFleet AI Advisor - Live Dashboard</title>
+    <meta name="description" content="Dashboard real-time per il monitoraggio della flotta con AI Advisor integrato">
+    
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f1117">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
     
     <!-- CSS -->
     <link rel="stylesheet" href="style.css">
@@ -22,6 +30,10 @@
         <header>
             <h1>🏎️ EcoFleet AI Advisor</h1>
             <div class="header-right">
+                <!-- PWA Install Button -->
+                <button class="install-btn" v-if="showInstallBtn" @click="installPwa">
+                    📲 Installa App
+                </button>
                 <!-- Profile Button -->
                 <div class="profile-wrapper" v-if="user">
                     <button class="profile-btn" @click="showProfileMenu = !showProfileMenu">
@@ -134,5 +146,15 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+        // ── Registrazione Service Worker ──
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((reg) => console.log('[PWA] SW registrato:', reg.scope))
+                    .catch((err) => console.warn('[PWA] SW errore:', err));
+            });
+        }
+    </script>
 </body>
 </html>

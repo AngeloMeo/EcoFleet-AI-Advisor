@@ -34,6 +34,8 @@ const app = new Vue({
         user: null,
         authToken: '',
         showProfileMenu: false,
+        showInstallBtn: false,
+        deferredPrompt: null,
         chart: null,
         chartData: {
             labels: [],
@@ -404,6 +406,16 @@ const app = new Vue({
                     }
                 }
             });
+        },
+
+        installPwa() {
+            if (!this.deferredPrompt) return;
+            this.deferredPrompt.prompt();
+            this.deferredPrompt.userChoice.then((choice) => {
+                console.log('[PWA] Scelta utente:', choice.outcome);
+                this.deferredPrompt = null;
+                this.showInstallBtn = false;
+            });
         }
     },
     async mounted() {
@@ -418,6 +430,20 @@ const app = new Vue({
             if (!e.target.closest('.profile-wrapper')) {
                 this.showProfileMenu = false;
             }
+        });
+
+        // ── PWA Install Prompt ──
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            this.deferredPrompt = e;
+            this.showInstallBtn = true;
+            console.log('[PWA] Install prompt disponibile');
+        });
+
+        window.addEventListener('appinstalled', () => {
+            this.showInstallBtn = false;
+            this.deferredPrompt = null;
+            console.log('[PWA] App installata!');
         });
     }
 });
