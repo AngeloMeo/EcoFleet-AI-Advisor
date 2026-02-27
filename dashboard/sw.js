@@ -54,6 +54,9 @@ self.addEventListener('fetch', (event) => {
     // Skip non-GET requests (SignalR WebSocket, POST, DELETE, etc.)
     if (request.method !== 'GET') return;
 
+    // Skip navigation requests — il browser gestisce i redirect EasyAuth direttamente
+    if (request.mode === 'navigate') return;
+
     // Skip Azure EasyAuth endpoints — MAI cacheare token/sessioni
     if (url.pathname.startsWith('/.auth/')) return;
 
