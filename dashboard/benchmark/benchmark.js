@@ -75,6 +75,28 @@ function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// ── Utility: UA Parser ──
+function parseUserAgent(ua) {
+    let browser = "Unknown";
+    let os = "Unknown";
+
+    // OS
+    if (/android/i.test(ua)) os = "Android";
+    else if (/ipad|iphone|ipod/i.test(ua)) os = "iOS";
+    else if (/windows/i.test(ua)) os = "Windows";
+    else if (/mac os x/i.test(ua)) os = "macOS";
+    else if (/linux/i.test(ua)) os = "Linux";
+
+    // Browser (ordine importante)
+    if (/edg/i.test(ua)) browser = "Edge";
+    else if (/opr|opera/i.test(ua)) browser = "Opera";
+    else if (/firefox|fxios/i.test(ua)) browser = "Firefox";
+    else if (/chrome|crios/i.test(ua)) browser = "Chrome";
+    else if (/safari/i.test(ua)) browser = "Safari";
+
+    return { browser, os };
+}
+
 // ══════════════════════════════════════════════════════════════
 // TEST 1: JSON Processing (CPU-bound Microbenchmark)
 // Equivalente: data processing / serializzazione del paper
@@ -626,6 +648,7 @@ function pushToAppInsights() {
         });
 
         // Evento dettagliato con tutte le proprietà
+        const uaInfo = parseUserAgent(navigator.userAgent);
         const properties = {
             runId,
             test: result.test,
@@ -638,6 +661,8 @@ function pushToAppInsights() {
             preRAM: result.preRAM,
             computedRAM: result.computedRAM,
             userAgent: navigator.userAgent,
+            browserName: uaInfo.browser,
+            osName: uaInfo.os,
             platform: navigator.platform,
             hardwareConcurrency: String(navigator.hardwareConcurrency || 'N/A'),
             screenResolution: `${screen.width}x${screen.height}`,
