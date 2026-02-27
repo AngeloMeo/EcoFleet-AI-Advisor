@@ -4,18 +4,32 @@
 // KPI: Time-to-Completion (ms), PreRAM (MB), ComputedRAM (MB)
 // ══════════════════════════════════════════════════════════════
 
-// ── Application Insights (stessa istanza della dashboard) ──
-const appInsights = new Microsoft.ApplicationInsights.ApplicationInsights({
-    config: {
-        connectionString: 'InstrumentationKey=47839450-6abb-4d58-ab4d-609959825ba0;IngestionEndpoint=https://italynorth-0.in.applicationinsights.azure.com/;LiveEndpoint=https://italynorth.livediagnostics.monitor.azure.com/;ApplicationId=963dc218-6fe0-47c2-965a-dcd3a48c812f',
-        disableFetchTracking: false,
-        enableCorsCorrelation: true,
-        enableRequestHeaderTracking: true,
-        enableResponseHeaderTracking: true
-    }
+// ── Error Logging per Mobile ──
+window.onerror = function(msg, url, line, col, error) {
+    console.error(`[Global Error] ${msg} at ${line}:${col}`, error);
+    updateStatus(`❌ Errore critico: ${msg}`);
+};
+window.addEventListener("unhandledrejection", function(promiseRejectionEvent) { 
+    console.error('[Unhandled Rejection]', promiseRejectionEvent.reason);
 });
-appInsights.loadAppInsights();
-appInsights.trackPageView({ name: 'Benchmark Suite' });
+
+// ── Application Insights (stessa istanza della dashboard) ──
+try {
+    const appInsights = new Microsoft.ApplicationInsights.ApplicationInsights({
+        config: {
+            connectionString: 'InstrumentationKey=47839450-6abb-4d58-ab4d-609959825ba0;IngestionEndpoint=https://italynorth-0.in.applicationinsights.azure.com/;LiveEndpoint=https://italynorth.livediagnostics.monitor.azure.com/;ApplicationId=963dc218-6fe0-47c2-965a-dcd3a48c812f',
+            disableFetchTracking: false,
+            enableCorsCorrelation: true,
+            enableRequestHeaderTracking: true,
+            enableResponseHeaderTracking: true
+        }
+    });
+    appInsights.loadAppInsights();
+    appInsights.trackPageView({ name: 'Benchmark Suite' });
+    window.appInsights = appInsights;
+} catch (e) {
+    console.error("AppInsights init failed (forse adblocker?):", e);
+}
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:7071/api'
@@ -582,6 +596,10 @@ function pushToAppInsights() {
         alert('Nessun risultato da inviare. Esegui prima i benchmark.');
         return;
     }
+    if (!window.appInsights) {
+        alert('App Insights disabilitato (forse da adblocker/browser privacy settings). Impossibile inviare dati.');
+        return;
+    }
 
     const runId = `bench-${Date.now()}`;
 
@@ -640,8 +658,12 @@ function pushToAppInsights() {
     });
 
     // Forza invio immediato
-    appInsights.flush();
+    window.appInsights.flush();
 
     updateStatus('📤 Risultati inviati ad Application Insights!');
     alert(`✅ ${allResults.length} risultati inviati ad App Insights.\nRun ID: ${runId}\n\nTrovabili in App Insights → Logs → customEvents | customMetrics`);
 }
+
+// ── Esponi esplicitamente funzioni per bottone onClick ──
+window.runAllBenchmarks = runAllBenchmarks;
+window.pushToAppInsights = pushToAppInsights;
