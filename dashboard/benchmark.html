@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoFleet — Synthetic Benchmark Suite</title>
+    <meta name="description" content="Benchmark sintetico PWA alla Biørn-Hansen: TTC, RAM, FPS">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+    <!-- App Insights SDK -->
+    <script src="https://js.monitor.azure.com/scripts/b/ai.3.gbl.min.js"></script>
+
+    <style>
+        /* ── Reset & Base ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-card: #111827;
+            --bg-card-hover: #1a2332;
+            --border: #1e293b;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.3);
+            --green: #10b981;
+            --green-glow: rgba(16, 185, 129, 0.3);
+            --yellow: #f59e0b;
+            --red: #ef4444;
+            --purple: #a855f7;
+            --text: #e2e8f0;
+            --text-muted: #64748b;
+            --text-dim: #475569;
+            --mono: 'JetBrains Mono', monospace;
+            --sans: 'Inter', system-ui, sans-serif;
+        }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg-primary);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 1.5rem;
+            line-height: 1.6;
+        }
+
+        /* ── Header ── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header h1 .badge {
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 0.2em 0.6em;
+            background: var(--accent);
+            color: white;
+            border-radius: 4px;
+        }
+
+        .back-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: var(--accent); }
+
+        /* ── Methodology Box ── */
+        .method-box {
+            background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(168,85,247,0.08));
+            border: 1px solid rgba(59,130,246,0.2);
+            border-radius: 12px;
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 2rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .method-box strong { color: var(--text); }
+
+        /* ── Test Cards Grid ── */
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+
+        .test-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .test-card .icon { font-size: 1.5rem; margin-bottom: 0.4rem; }
+        .test-card .name { font-size: 0.8rem; font-weight: 600; }
+        .test-card .type { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+        .test-card.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+            background: var(--bg-card-hover);
+        }
+        .test-card.done {
+            border-color: var(--green);
+            box-shadow: 0 0 12px var(--green-glow);
+        }
+
+        /* ── Controls ── */
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            font-family: var(--sans);
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 0.7rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #2563eb;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .btn-green {
+            background: var(--green);
+            color: white;
+        }
+        .btn-green:hover:not(:disabled) {
+            background: #059669;
+            box-shadow: 0 0 20px var(--green-glow);
+        }
+
+        .status {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-family: var(--mono);
+        }
+
+        /* ── Progress Bar ── */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--purple));
+            width: 0%;
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+        .progress-text {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-align: right;
+            margin-top: 0.3rem;
+            margin-bottom: 1rem;
+            font-family: var(--mono);
+        }
+
+        /* ── Results Table ── */
+        .results-wrapper {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--bg-card);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        thead th {
+            background: rgba(59,130,246,0.08);
+            padding: 0.8rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        tbody td {
+            padding: 0.7rem 1rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        tbody tr:last-child td { border-bottom: none; }
+
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+        td.num {
+            font-family: var(--mono);
+            text-align: right;
+            font-size: 0.82rem;
+        }
+        td.num small {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+        }
+
+        td.error-cell {
+            color: var(--yellow);
+            font-style: italic;
+        }
+
+        /* ── DOM Stress Container (nascosto) ── */
+        #dom-stress-container {
+            position: fixed;
+            top: -9999px;
+            left: -9999px;
+            width: 500px;
+            overflow: hidden;
+        }
+        .bench-dom-item {
+            padding: 4px 8px;
+            font-size: 12px;
+            border-bottom: 1px solid #222;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 600px) {
+            body { padding: 1rem; }
+            .header h1 { font-size: 1.2rem; }
+            .test-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+            table { font-size: 0.75rem; }
+            thead th, tbody td { padding: 0.5rem 0.6rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>
+            🧪 Benchmark Suite
+            <span class="badge">Biørn-Hansen Method</span>
+        </h1>
+        <a href="./" class="back-link">← Torna alla Dashboard</a>
+    </div>
+
+    <!-- Methodology -->
+    <div class="method-box">
+        <strong>Metodologia:</strong> Benchmark sintetico ispirato a Biørn-Hansen et al. (2020).
+        Per ogni test si misurano <strong>Time-to-Completion (ms)</strong>, <strong>PreRAM</strong> e <strong>ComputedRAM (MB)</strong>
+        su 10 iterazioni con statistiche (media, min, max, σ).
+        I test sensori sono opzionali e richiedono un dispositivo mobile.
+        I risultati vengono inviati ad <strong>Azure Application Insights</strong> per correlazione Cloud-Side.
+    </div>
+
+    <!-- Test Cards -->
+    <div class="test-grid">
+        <div class="test-card" id="card-json">
+            <div class="icon">⚡</div>
+            <div class="name">JSON Processing</div>
+            <div class="type">Microbenchmark (CPU)</div>
+        </div>
+        <div class="test-card" id="card-cache">
+            <div class="icon">💾</div>
+            <div class="name">Cache API I/O</div>
+            <div class="type">Synthetic (File System)</div>
+        </div>
+        <div class="test-card" id="card-idb">
+            <div class="icon">🗄️</div>
+            <div class="name">IndexedDB CRUD</div>
+            <div class="type">Synthetic (SQLite)</div>
+        </div>
+        <div class="test-card" id="card-geo">
+            <div class="icon">📍</div>
+            <div class="name">Geolocation</div>
+            <div class="type">Microbenchmark (Sensore)</div>
+        </div>
+        <div class="test-card" id="card-accel">
+            <div class="icon">📱</div>
+            <div class="name">Accelerometer</div>
+            <div class="type">Microbenchmark (Sensore)</div>
+        </div>
+        <div class="test-card" id="card-fetch">
+            <div class="icon">🌐</div>
+            <div class="name">Fetch API (REST)</div>
+            <div class="type">Synthetic (Network + Cloud)</div>
+        </div>
+        <div class="test-card" id="card-dom">
+            <div class="icon">🖥️</div>
+            <div class="name">DOM Stress</div>
+            <div class="type">Synthetic (UI/FPS)</div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <button class="btn btn-primary" id="btn-run" onclick="runAllBenchmarks()">
+            ▶ Esegui Tutti i Test
+        </button>
+        <button class="btn btn-green" id="btn-push" onclick="pushToAppInsights()">
+            📤 Invia a App Insights
+        </button>
+        <span class="status" id="bench-status">Pronto</span>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <div class="progress-text" id="progress-text">0 / 7</div>
+
+    <!-- Results Table -->
+    <div class="results-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Test</th>
+                    <th>Categoria</th>
+                    <th>TTC Media (ms)</th>
+                    <th>TTC Min</th>
+                    <th>TTC Max</th>
+                    <th>PreRAM (MB)</th>
+                    <th>ComputedRAM (MB)</th>
+                </tr>
+            </thead>
+            <tbody id="results-body">
+                <!-- Popolato dinamicamente -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- DOM Stress container (offscreen) -->
+    <div id="dom-stress-container"></div>
+
+    <!-- Script -->
+    <script src="benchmark.js"></script>
+</body>
+</html>
