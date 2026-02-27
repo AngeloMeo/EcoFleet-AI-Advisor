@@ -2,7 +2,7 @@
 // EcoFleet AI Advisor — Service Worker (PWA)
 // ============================================
 
-const CACHE_NAME = 'ecofleet-v2';
+const CACHE_NAME = 'ecofleet-v3';
 
 // Asset statici da pre-cacheare all'installazione
 const PRECACHE_URLS = [
@@ -10,6 +10,8 @@ const PRECACHE_URLS = [
     './app.js',
     './style.css',
     './manifest.json',
+    './benchmark.html',
+    './benchmark.js',
     './icons/icon-192.png',
     './icons/icon-512.png',
     // CDN libs
