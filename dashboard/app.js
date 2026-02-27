@@ -81,6 +81,14 @@ const app = new Vue({
         }
     },
     methods: {
+        handleAuthExpiration() {
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return;
+            console.warn('⚠️ Token scaduto o non valido! Reindirizzamento al login...');
+            this.statusMessage = 'Sessione scaduta, riautenticazione in corso...';
+            // Forza logout e poi re-login su Entra ID per pulire i cookie vecchi
+            window.location.href = '/.auth/logout?post_logout_redirect_uri=/.auth/login/aad';
+        },
+
         async fetchUserProfile() {
             try {
                 const res = await fetch('/.auth/me');
@@ -108,7 +116,11 @@ const app = new Vue({
         async refreshAuthToken() {
             try {
                 // Chiedi a EasyAuth di rinnovare il token
-                await fetch('/.auth/refresh');
+                const res = await fetch('/.auth/refresh');
+                if (res.status === 401 || res.status === 403) {
+                    this.handleAuthExpiration();
+                    return;
+                }
                 // Ri-carica il token aggiornato
                 await this.fetchUserProfile();
                 console.log('🔄 Token rinnovato');
@@ -131,6 +143,10 @@ const app = new Vue({
         async fetchVehicles() {
             try {
                 const response = await fetch(`${API_BASE}/vehicles`, { headers: this.authHeaders() });
+                if (response.status === 401) {
+                    this.handleAuthExpiration();
+                    return;
+                }
                 const data = await response.json();
                 this.vehicles = data;
                 
@@ -269,6 +285,10 @@ const app = new Vue({
 
             } catch (err) {
                 console.error("Errore SignalR:", err);
+                if (err.message && err.message.includes('401')) {
+                    this.handleAuthExpiration();
+                    return;
+                }
                 appInsights.trackException({ exception: err, properties: { operation: 'initSignalR' } });
                 this.statusMessage = 'Errore Connessione';
                 setTimeout(() => this.initSignalR(), 5000);
