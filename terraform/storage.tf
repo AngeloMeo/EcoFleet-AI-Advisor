@@ -11,9 +11,6 @@ resource "azurerm_storage_account" "storage" {
   account_kind             = "StorageV2"
   min_tls_version          = "TLS1_2"
 
-  # Abilita HTTPS obbligatorio
-  enable_https_traffic_only = true
-
   tags = local.common_tags
 }
 

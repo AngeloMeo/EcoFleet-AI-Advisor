@@ -21,7 +21,10 @@ resource "azurerm_signalr_service" "signalr" {
 
   connectivity_logs_enabled = true
   messaging_logs_enabled    = false
-  live_trace_enabled        = false
+
+  live_trace {
+    enabled = false
+  }
 
   tags = local.common_tags
 }

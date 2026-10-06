@@ -36,7 +36,7 @@ resource "azurerm_cosmosdb_sql_container" "telemetry" {
   resource_group_name   = azurerm_resource_group.rg.name
   account_name          = azurerm_cosmosdb_account.cosmos.name
   database_name         = azurerm_cosmosdb_sql_database.database.name
-  partition_key_path    = "/vehicle_id"
+  partition_key_paths   = ["/vehicle_id"]
   partition_key_version = 2
 
   autoscale_settings {
