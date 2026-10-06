@@ -22,6 +22,9 @@ resource "azurerm_linux_web_app" "frontend" {
   https_only          = true
 
   site_config {
+    # F1 Free non supporta Always On (il default Terraform è true)
+    always_on = false
+
     application_stack {
       node_version = "20-lts"
     }
