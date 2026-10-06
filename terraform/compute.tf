@@ -38,26 +38,18 @@ resource "azurerm_linux_web_app" "frontend" {
 }
 
 # =============================================================================
-# BACKEND: APP SERVICE PLAN & AZURE FUNCTIONS (Python 3.11 Serverless)
+# BACKEND: AZURE FUNCTIONS (Python 3.11 Serverless)
 # =============================================================================
 
-# Piano di hosting serverless per Azure Functions (FC1 Flex Consumption)
-resource "azurerm_service_plan" "asp_func" {
-  name                = var.use_random_suffix ? "asp-func-${local.suffix}" : "ASP-${var.resource_group_name}-func"
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
-  os_type             = "Linux"
-  sku_name            = var.function_sku_name
-
-  tags = local.common_tags
-}
-
 # Azure Function App Linux con Python 3.11 e Managed Identity abilitata
+# Condivide lo stesso App Service Plan Linux (asp_web) della Dashboard per:
+# 1. Rimanere 100% Free F1 senza eccedere la quota di piani gratuiti per sottoscrizione/regione
+# 2. Rimanere in un unico Resource Group, evitando incompatibilità tra SKU Dynamic e Dedicated
 resource "azurerm_linux_function_app" "function" {
   name                       = local.function_app_name
   resource_group_name        = azurerm_resource_group.rg.name
   location                   = azurerm_resource_group.rg.location
-  service_plan_id            = azurerm_service_plan.asp_func.id
+  service_plan_id            = azurerm_service_plan.asp_web.id
   storage_account_name       = azurerm_storage_account.storage.name
   storage_account_access_key = azurerm_storage_account.storage.primary_access_key
   https_only                 = true
@@ -68,6 +60,9 @@ resource "azurerm_linux_function_app" "function" {
   }
 
   site_config {
+    # F1 Free non supporta Always On (il default per piani dedicati è true)
+    always_on = false
+
     application_stack {
       python_version = "3.11"
     }
@@ -84,17 +79,17 @@ resource "azurerm_linux_function_app" "function" {
 
   # Cablaggio automatico delle variabili d'ambiente (App Settings)
   app_settings = {
-    "FUNCTIONS_WORKER_RUNTIME"                 = "python"
-    "AzureWebJobsStorage"                      = azurerm_storage_account.storage.primary_connection_string
-    "IoTHubEventHubName"                       = azurerm_iothub.iot.event_hub_events_path
-    "IoTHubEventHubConnectionString"           = local.iothub_eventhub_connection_string
-    "CosmosDBConnectionString__accountEndpoint" = azurerm_cosmosdb_account.cosmos.endpoint
-    "CosmosDBConnectionString"                 = "AccountEndpoint=${azurerm_cosmosdb_account.cosmos.endpoint};AccountKey=${azurerm_cosmosdb_account.cosmos.primary_key};"
-    "SignalRConnectionString"                  = azurerm_signalr_service.signalr.primary_connection_string
-    "AzureStorageQueueConnectionString"        = azurerm_storage_account.storage.primary_connection_string
-    "IotHubHostName"                           = azurerm_iothub.iot.hostname
-    "GOOGLE_API_KEY"                           = var.google_api_key
-    "APPLICATIONINSIGHTS_CONNECTION_STRING"    = azurerm_application_insights.appinsights_func.connection_string
+    "FUNCTIONS_WORKER_RUNTIME"                   = "python"
+    "AzureWebJobsStorage"                        = azurerm_storage_account.storage.primary_connection_string
+    "IoTHubEventHubName"                         = local.iothub_events_path
+    "IoTHubEventHubConnectionString"             = local.iothub_eventhub_connection_string
+    "CosmosDBConnectionString__accountEndpoint"  = azurerm_cosmosdb_account.cosmos.endpoint
+    "CosmosDBConnectionString"                   = "AccountEndpoint=${azurerm_cosmosdb_account.cosmos.endpoint};AccountKey=${azurerm_cosmosdb_account.cosmos.primary_key};"
+    "SignalRConnectionString"                    = azurerm_signalr_service.signalr.primary_connection_string
+    "AzureStorageQueueConnectionString"          = azurerm_storage_account.storage.primary_connection_string
+    "IotHubHostName"                             = local.iothub_hostname
+    "GOOGLE_API_KEY"                             = var.google_api_key
+    "APPLICATIONINSIGHTS_CONNECTION_STRING"      = azurerm_application_insights.appinsights_func.connection_string
     "ApplicationInsightsAgent_EXTENSION_VERSION" = "~3"
   }
 
@@ -116,7 +111,8 @@ resource "azurerm_cosmosdb_sql_role_assignment" "func_cosmos_role" {
 
 # Assegnazione del ruolo "IoT Hub Data Contributor" alla Managed Identity della Function (per C2D Registry Manager)
 resource "azurerm_role_assignment" "func_iothub_role" {
-  scope                = azurerm_iothub.iot.id
+  scope                = local.iothub_id
   role_definition_name = "IoT Hub Data Contributor"
   principal_id         = azurerm_linux_function_app.function.identity[0].principal_id
 }
+

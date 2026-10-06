@@ -34,12 +34,12 @@ output "web_app_url" {
 
 output "iothub_name" {
   description = "Nome di Azure IoT Hub"
-  value       = azurerm_iothub.iot.name
+  value       = local.iothub_name
 }
 
 output "iothub_hostname" {
   description = "Hostname di Azure IoT Hub"
-  value       = azurerm_iothub.iot.hostname
+  value       = local.iothub_hostname
 }
 
 output "iothub_service_connection_string" {
