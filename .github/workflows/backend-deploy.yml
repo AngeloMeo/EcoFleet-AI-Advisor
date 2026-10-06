@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'api/**'             # <--- Esegue questo file SOLO se cambia qualcosa dentro 'api'
-      - '.github/workflows/backend.yml' # (Opzionale) Esegue anche se modifichi il workflow stesso
+      - '.github/workflows/backend-deploy.yml'
   workflow_dispatch:
 
 env:

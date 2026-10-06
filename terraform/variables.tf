@@ -29,7 +29,7 @@ variable "iot_hub_location" {
 variable "use_random_suffix" {
   description = "Se true, aggiunge un suffisso casuale di 6 caratteri a tutte le risorse per evitare conflitti globali su Azure"
   type        = bool
-  default     = true
+  default     = false
 }
 
 # =============================================================================
