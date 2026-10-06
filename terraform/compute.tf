@@ -91,7 +91,6 @@ resource "azurerm_function_app_flex_consumption" "function" {
 
   # Cablaggio automatico delle variabili d'ambiente (App Settings)
   app_settings = {
-    "FUNCTIONS_WORKER_RUNTIME"                   = "python"
     "AzureWebJobsStorage"                        = azurerm_storage_account.storage.primary_connection_string
     "IoTHubEventHubName"                         = azurerm_iothub.iot.event_hub_events_path
     "IoTHubEventHubConnectionString"             = local.iothub_eventhub_connection_string
