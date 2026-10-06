@@ -20,6 +20,9 @@ app_data/
 .DS_Store
 Thumbs.db
 
+rel.tex
+*.pdf
+
 # Terraform
 .terraform/
 *.tfstate
