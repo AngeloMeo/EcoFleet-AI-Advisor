@@ -38,21 +38,40 @@ resource "azurerm_linux_web_app" "frontend" {
 }
 
 # =============================================================================
-# BACKEND: AZURE FUNCTIONS (Python 3.11 Serverless)
+# BACKEND: APP SERVICE PLAN & AZURE FUNCTIONS (Python 3.11 Flex Consumption FC1)
 # =============================================================================
 
-# Azure Function App Linux con Python 3.11 e Managed Identity abilitata
-# Condivide lo stesso App Service Plan Linux (asp_web) della Dashboard per:
-# 1. Rimanere 100% Free F1 senza eccedere la quota di piani gratuiti per sottoscrizione/regione
-# 2. Rimanere in un unico Resource Group, evitando incompatibilità tra SKU Dynamic e Dedicated
-resource "azurerm_linux_function_app" "function" {
+# Piano di hosting serverless per Azure Functions (FC1 Flex Consumption)
+resource "azurerm_service_plan" "asp_func" {
+  name                = var.use_random_suffix ? "asp-func-${local.suffix}" : "ASP-${var.resource_group_name}-func"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  os_type             = "Linux"
+  sku_name            = "FC1"
+
+  tags = local.common_tags
+}
+
+# Azure Function App Linux con Python 3.11 in modalità Flex Consumption (FC1)
+resource "azurerm_function_app_flex_consumption" "function" {
   name                       = local.function_app_name
   resource_group_name        = azurerm_resource_group.rg.name
   location                   = azurerm_resource_group.rg.location
-  service_plan_id            = azurerm_service_plan.asp_web.id
-  storage_account_name       = azurerm_storage_account.storage.name
-  storage_account_access_key = azurerm_storage_account.storage.primary_access_key
-  https_only                 = true
+  service_plan_id            = azurerm_service_plan.asp_func.id
+
+  # Storage container per i package di deploy
+  storage_container_type      = "blobContainer"
+  storage_container_endpoint  = "${azurerm_storage_account.storage.primary_blob_endpoint}${azurerm_storage_container.func_deploy.name}"
+  storage_authentication_type = "StorageAccountConnectionString"
+  storage_access_key          = azurerm_storage_account.storage.primary_access_key
+
+  # Runtime Python 3.11
+  runtime_name    = "python"
+  runtime_version = "3.11"
+
+  # Scalabilità e memoria
+  maximum_instance_count = 100
+  instance_memory_in_mb  = 2048
 
   # Identità Gestita assegnata dal sistema (usata da DefaultAzureCredential in cosmos_client.py e iot_hub.py)
   identity {
@@ -60,13 +79,6 @@ resource "azurerm_linux_function_app" "function" {
   }
 
   site_config {
-    # F1 Free non supporta Always On (il default per piani dedicati è true)
-    always_on = false
-
-    application_stack {
-      python_version = "3.11"
-    }
-
     # CORS: autorizza l'origine del portale Azure e il dominio della Dashboard Web App
     cors {
       allowed_origins = [
@@ -105,7 +117,7 @@ resource "azurerm_cosmosdb_sql_role_assignment" "func_cosmos_role" {
   resource_group_name = azurerm_resource_group.rg.name
   account_name        = azurerm_cosmosdb_account.cosmos.name
   role_definition_id  = "${azurerm_cosmosdb_account.cosmos.id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002"
-  principal_id        = azurerm_linux_function_app.function.identity[0].principal_id
+  principal_id        = azurerm_function_app_flex_consumption.function.identity[0].principal_id
   scope               = azurerm_cosmosdb_account.cosmos.id
 }
 
@@ -113,6 +125,6 @@ resource "azurerm_cosmosdb_sql_role_assignment" "func_cosmos_role" {
 resource "azurerm_role_assignment" "func_iothub_role" {
   scope                = azurerm_iothub.iot.id
   role_definition_name = "IoT Hub Data Contributor"
-  principal_id         = azurerm_linux_function_app.function.identity[0].principal_id
+  principal_id         = azurerm_function_app_flex_consumption.function.identity[0].principal_id
 }
 

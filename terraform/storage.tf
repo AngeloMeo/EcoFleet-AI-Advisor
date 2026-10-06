@@ -25,3 +25,10 @@ resource "azurerm_storage_queue" "advice_queue_poison" {
   name               = "advice-queue-poison"
   storage_account_id = azurerm_storage_account.storage.id
 }
+
+# Container Blob per il package di deployment della Function App (Flex Consumption FC1)
+resource "azurerm_storage_container" "func_deploy" {
+  name                  = "app-package-functions"
+  storage_account_id    = azurerm_storage_account.storage.id
+  container_access_type = "private"
+}

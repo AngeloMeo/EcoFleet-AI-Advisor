@@ -9,17 +9,17 @@ output "resource_group_name" {
 
 output "function_app_name" {
   description = "Nome della Function App (Backend)"
-  value       = azurerm_linux_function_app.function.name
+  value       = azurerm_function_app_flex_consumption.function.name
 }
 
 output "function_app_default_hostname" {
   description = "Hostname della Function App"
-  value       = azurerm_linux_function_app.function.default_hostname
+  value       = azurerm_function_app_flex_consumption.function.default_hostname
 }
 
 output "function_app_api_url" {
   description = "URL base delle API REST della Function App"
-  value       = "https://${azurerm_linux_function_app.function.default_hostname}/api"
+  value       = "https://${azurerm_function_app_flex_consumption.function.default_hostname}/api"
 }
 
 output "web_app_name" {
