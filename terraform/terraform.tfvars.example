@@ -25,4 +25,4 @@ use_random_suffix = true
 # iot_hub_sku_name  = "F1"
 # signalr_sku_name  = "Free_F1"
 # web_app_sku_name  = "F1"
-# function_sku_name = "Y1"
+# function_sku_name = "FC1"

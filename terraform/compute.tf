@@ -41,7 +41,7 @@ resource "azurerm_linux_web_app" "frontend" {
 # BACKEND: APP SERVICE PLAN & AZURE FUNCTIONS (Python 3.11 Serverless)
 # =============================================================================
 
-# Piano di hosting serverless per Azure Functions (Y1 Consumption standard)
+# Piano di hosting serverless per Azure Functions (FC1 Flex Consumption)
 resource "azurerm_service_plan" "asp_func" {
   name                = var.use_random_suffix ? "asp-func-${local.suffix}" : "ASP-${var.resource_group_name}-func"
   resource_group_name = azurerm_resource_group.rg.name

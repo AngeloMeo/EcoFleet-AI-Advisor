@@ -119,9 +119,9 @@ variable "web_app_sku_name" {
 }
 
 variable "function_sku_name" {
-  description = "SKU del piano App Service per Azure Functions (Y1 = Serverless Consumption standard, FC1 = Flex Consumption)"
+  description = "SKU del piano App Service per Azure Functions (FC1 = Flex Consumption serverless)"
   type        = string
-  default     = "Y1"
+  default     = "FC1"
 }
 
 # =============================================================================

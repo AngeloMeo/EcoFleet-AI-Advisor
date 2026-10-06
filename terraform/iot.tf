@@ -12,6 +12,9 @@ resource "azurerm_iothub" "iot" {
     capacity = var.iot_hub_sku_capacity
   }
 
+  # F1 Free supporta solo 2 partizioni Event Hub (default Terraform = 4)
+  event_hub_partition_count = 2
+
   tags = local.common_tags
 }
 
@@ -25,7 +28,5 @@ locals {
   iothub_primary_connection_string = "HostName=${azurerm_iothub.iot.hostname};SharedAccessKeyName=iothubowner;SharedAccessKey=${local.iothubowner_policy.primary_key}"
 
   # Connection String Event-Hub compatibile richiesta dal trigger di ProcessTelemetry
-  # (sb://<endpoint>/;SharedAccessKeyName=iothubowner;SharedAccessKey=...;EntityPath=<event_hub_name>)
   iothub_eventhub_connection_string = "Endpoint=sb://${azurerm_iothub.iot.event_hub_events_endpoint}/;SharedAccessKeyName=iothubowner;SharedAccessKey=${local.iothubowner_policy.primary_key};EntityPath=${azurerm_iothub.iot.event_hub_events_path}"
 }
-
