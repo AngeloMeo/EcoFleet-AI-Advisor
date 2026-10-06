@@ -81,13 +81,13 @@ resource "azurerm_linux_function_app" "function" {
   app_settings = {
     "FUNCTIONS_WORKER_RUNTIME"                   = "python"
     "AzureWebJobsStorage"                        = azurerm_storage_account.storage.primary_connection_string
-    "IoTHubEventHubName"                         = local.iothub_events_path
+    "IoTHubEventHubName"                         = azurerm_iothub.iot.event_hub_events_path
     "IoTHubEventHubConnectionString"             = local.iothub_eventhub_connection_string
     "CosmosDBConnectionString__accountEndpoint"  = azurerm_cosmosdb_account.cosmos.endpoint
     "CosmosDBConnectionString"                   = "AccountEndpoint=${azurerm_cosmosdb_account.cosmos.endpoint};AccountKey=${azurerm_cosmosdb_account.cosmos.primary_key};"
     "SignalRConnectionString"                    = azurerm_signalr_service.signalr.primary_connection_string
     "AzureStorageQueueConnectionString"          = azurerm_storage_account.storage.primary_connection_string
-    "IotHubHostName"                             = local.iothub_hostname
+    "IotHubHostName"                             = azurerm_iothub.iot.hostname
     "GOOGLE_API_KEY"                             = var.google_api_key
     "APPLICATIONINSIGHTS_CONNECTION_STRING"      = azurerm_application_insights.appinsights_func.connection_string
     "ApplicationInsightsAgent_EXTENSION_VERSION" = "~3"
@@ -111,7 +111,7 @@ resource "azurerm_cosmosdb_sql_role_assignment" "func_cosmos_role" {
 
 # Assegnazione del ruolo "IoT Hub Data Contributor" alla Managed Identity della Function (per C2D Registry Manager)
 resource "azurerm_role_assignment" "func_iothub_role" {
-  scope                = local.iothub_id
+  scope                = azurerm_iothub.iot.id
   role_definition_name = "IoT Hub Data Contributor"
   principal_id         = azurerm_linux_function_app.function.identity[0].principal_id
 }

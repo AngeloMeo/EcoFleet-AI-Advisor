@@ -60,17 +60,6 @@ variable "iot_hub_name" {
   default     = "messagesHub"
 }
 
-variable "existing_iothub_name" {
-  description = "Nome di un Azure IoT Hub esistente da riusare. Se vuoto, Terraform ne crea uno nuovo."
-  type        = string
-  default     = ""
-}
-
-variable "existing_iothub_rg" {
-  description = "Resource Group dell'IoT Hub esistente (se vuoto, usa il Resource Group principale del progetto)"
-  type        = string
-  default     = ""
-}
 
 variable "signalr_name" {
   description = "Nome base del servizio Azure SignalR"
