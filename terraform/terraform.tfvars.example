@@ -1,0 +1,28 @@
+# =============================================================================
+# Esempio di configurazione variabili per Terraform
+# Copia questo file in 'terraform.tfvars' per applicare le tue personalizzazioni
+# =============================================================================
+
+# Prefisso comune per le risorse
+project_prefix = "ecofleet"
+
+# Ambiente
+environment = "dev"
+
+# Regione Azure primaria
+location = "italynorth"
+
+# Regione Azure per IoT Hub (Free F1 supportato nativamente)
+iot_hub_location = "germanywestcentral"
+
+# Aggiungi suffisso casuale per garantire univocità DNS globale
+use_random_suffix = true
+
+# Google Gemini API Key per i consigli intelligenti (opzionale, default rule-based)
+# google_api_key = "AIzaSy..."
+
+# Personalizzazione SKU (default gratuiti / serverless)
+# iot_hub_sku_name  = "F1"
+# signalr_sku_name  = "Free_F1"
+# web_app_sku_name  = "F1"
+# function_sku_name = "Y1"

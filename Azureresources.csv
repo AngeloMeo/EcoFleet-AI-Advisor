@@ -1,0 +1,12 @@
+﻿NAME,TYPE,LOCATION,RESOURCE LINK
+"Application Insights Smart Detection","Action group","Global","https://portal.azure.com#resource/subscriptions/ab4bd52a-d7fd-4e75-99b9-f0d369aca6da/resourceGroups/EcoFleetAdvisor/providers/microsoft.insights/actiongroups/Application Insights Smart Detection"
+"ASP-EcoFleetAdvisor-b550","App Service plan","Italy North","https://portal.azure.com#resource/subscriptions/ab4bd52a-d7fd-4e75-99b9-f0d369aca6da/resourceGroups/EcoFleetAdvisor/providers/Microsoft.Web/serverFarms/ASP-EcoFleetAdvisor-b550"
+"ASP-EcoFleetAdvisor-b8e3","App Service plan","Italy North","https://portal.azure.com#resource/subscriptions/ab4bd52a-d7fd-4e75-99b9-f0d369aca6da/resourceGroups/EcoFleetAdvisor/providers/Microsoft.Web/serverFarms/ASP-EcoFleetAdvisor-b8e3"
+"cosmos-ecofleet","Azure Cosmos DB account","Italy North","https://portal.azure.com#resource/subscriptions/ab4bd52a-d7fd-4e75-99b9-f0d369aca6da/resourceGroups/EcoFleetAdvisor/providers/Microsoft.DocumentDb/databaseAccounts/cosmos-ecofleet"
+"ecofleet","App Service","Italy North","https://portal.azure.com#resource/subscriptions/ab4bd52a-d7fd-4e75-99b9-f0d369aca6da/resourceGroups/EcoFleetAdvisor/providers/Microsoft.Web/sites/ecofleet"
+"ecofleet","Application Insights","Italy North","https://portal.azure.com#resource/subscriptions/ab4bd52a-d7fd-4e75-99b9-f0d369aca6da/resourceGroups/EcoFleetAdvisor/providers/microsoft.insights/components/ecofleet"
+"func-ecofleet","Function App","Italy North","https://portal.azure.com#resource/subscriptions/ab4bd52a-d7fd-4e75-99b9-f0d369aca6da/resourceGroups/EcoFleetAdvisor/providers/Microsoft.Web/sites/func-ecofleet"
+"func-ecofleet","Application Insights","Italy North","https://portal.azure.com#resource/subscriptions/ab4bd52a-d7fd-4e75-99b9-f0d369aca6da/resourceGroups/EcoFleetAdvisor/providers/microsoft.insights/components/func-ecofleet"
+"messagesHub","IoT Hub","Germany West Central","https://portal.azure.com#resource/subscriptions/ab4bd52a-d7fd-4e75-99b9-f0d369aca6da/resourceGroups/EcoFleetAdvisor/providers/Microsoft.Devices/IotHubs/messagesHub"
+"signalr-ecofleet","SignalR","Italy North","https://portal.azure.com#resource/subscriptions/ab4bd52a-d7fd-4e75-99b9-f0d369aca6da/resourceGroups/EcoFleetAdvisor/providers/Microsoft.SignalRService/SignalR/signalr-ecofleet"
+"storeecofleet","Storage account","Italy North","https://portal.azure.com#resource/subscriptions/ab4bd52a-d7fd-4e75-99b9-f0d369aca6da/resourceGroups/EcoFleetAdvisor/providers/Microsoft.Storage/storageAccounts/storeecofleet"
