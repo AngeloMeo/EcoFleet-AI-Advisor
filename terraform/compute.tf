@@ -86,7 +86,7 @@ resource "azurerm_linux_function_app" "function" {
     "IoTHubEventHubName"                       = azurerm_iothub.iot.event_hub_events_path
     "IoTHubEventHubConnectionString"           = local.iothub_eventhub_connection_string
     "CosmosDBConnectionString__accountEndpoint" = azurerm_cosmosdb_account.cosmos.endpoint
-    "CosmosDBConnectionString"                 = azurerm_cosmosdb_account.cosmos.primary_connection_string
+    "CosmosDBConnectionString"                 = "AccountEndpoint=${azurerm_cosmosdb_account.cosmos.endpoint};AccountKey=${azurerm_cosmosdb_account.cosmos.primary_key};"
     "SignalRConnectionString"                  = azurerm_signalr_service.signalr.primary_connection_string
     "AzureStorageQueueConnectionString"        = azurerm_storage_account.storage.primary_connection_string
     "IotHubHostName"                           = azurerm_iothub.iot.hostname
